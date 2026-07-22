@@ -1,0 +1,2330 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>词了个词 · 单词连线</title>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+        body { font-family:-apple-system,'Segoe UI',Roboto,system-ui,sans-serif; background:#f2f6fc; min-height:100vh; padding:12px 10px 20px; display:flex; justify-content:center; }
+        .app { max-width:600px; width:100%; background:white; border-radius:32px; box-shadow:0 12px 40px rgba(0,20,40,0.10); padding:18px 16px 24px; overflow:hidden; }
+        .header { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; }
+        .header h1 { font-size:20px; font-weight:700; color:#0b2b4a; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+        .header h1 span { background:#dce8f5; font-size:14px; padding:2px 12px; border-radius:30px; color:#1f3a5f; font-weight:600; }
+        .status-bar { display:flex; justify-content:space-between; align-items:center; background:#f8fafc; border-radius:40px; padding:8px 16px; margin:6px 0 14px; border:1px solid #e6eef7; font-size:14px; color:#1f3a5f; flex-wrap:wrap; gap:4px; }
+        .status-bar .score { background:#1a4b7a; color:white; padding:2px 16px; border-radius:40px; font-weight:600; font-size:14px; }
+        .status-bar .remain { background:#7c5cbf; color:white; padding:2px 14px; border-radius:40px; font-weight:600; font-size:13px; }
+        .status-bar .stats { background:#0e7b4c; color:white; padding:2px 14px; border-radius:40px; font-weight:600; font-size:13px; }
+        .toolbar { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+        .toolbar .btn { flex:1 1 auto; background:white; border:1px solid #d0ddee; padding:10px 0; border-radius:40px; font-weight:600; font-size:13px; color:#1f3a5f; cursor:pointer; transition:0.15s; text-align:center; min-width:60px; }
+        .toolbar .btn:active { transform:scale(0.96); background:#eaf1fd; }
+        .toolbar .btn-primary { background:#1a4b7a; border-color:#1a4b7a; color:white; }
+        .toolbar .btn-primary:active { background:#0f3a5f; transform:scale(0.96); }
+        .toolbar .btn-success { background:#0e7b4c; border-color:#0e7b4c; color:white; }
+        .toolbar .btn-success:active { background:#0a643e; transform:scale(0.96); }
+        .toolbar .btn-speak { background:#7c5cbf; border-color:#7c5cbf; color:white; }
+        .toolbar .btn-speak:active { background:#5f44a0; transform:scale(0.96); }
+        .toolbar .btn-speak.is-speaking { background:#dc2626; border-color:#dc2626; }
+        .toolbar .btn-upload { background:#d97706; border-color:#d97706; color:white; }
+        .toolbar .btn-upload:active { background:#b45309; transform:scale(0.96); }
+        .toolbar .btn-danger { background:#dc2626; border-color:#dc2626; color:white; }
+        .toolbar .btn-danger:active { background:#b91c1c; transform:scale(0.96); }
+        .toolbar .btn-warning { background:#f59e0b; border-color:#f59e0b; color:white; }
+        .toolbar .btn-warning:active { background:#d97706; transform:scale(0.96); }
+        .toolbar .btn-edit { background:#8b5cf6; border-color:#8b5cf6; color:white; }
+        .toolbar .btn-edit:active { background:#7c3aed; transform:scale(0.96); }
+        .word-list { display:flex; flex-direction:column; gap:4px; padding:6px 6px; min-height:80px; }
+        .word-item { background:white; border:2px solid #e2edf7; border-radius:12px; padding:8px 10px; font-size:14px; font-weight:500; color:#0b2b4a; cursor:pointer; transition:0.15s; display:flex; align-items:center; gap:4px; user-select:none; line-height:1.3; flex-wrap:wrap; }
+        .word-item:active { transform:scale(0.97); }
+        .word-item .play-btn { background:none; border:none; font-size:15px; cursor:pointer; padding:0 3px; opacity:0.5; flex-shrink:0; }
+        .word-item .play-btn:active { opacity:1; transform:scale(1.2); }
+        .word-item .text-content { flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:14px; }
+        .word-item .text-content.long-word { font-size:12px; }
+        .word-item .text-content.very-long-word { font-size:10px; }
+        .word-item .pos-tag { font-size:10px; color:#6b8aab; font-weight:400; flex-shrink:0; background:#f0f4fa; padding:1px 8px; border-radius:10px; margin-left:2px; }
+        .word-item.selected { border-color:#1a4b7a; background:#e1edfe; box-shadow:0 0 0 3px rgba(59,130,246,0.15); }
+        .word-item.matched { background:#e6f5ec; border-color:#1f9d6a; color:#0a4f2e; pointer-events:none; opacity:0.7; text-decoration:line-through 2px #1f9d6a; }
+        .word-item.matched::after { content:"✓"; color:#0e7b4c; font-weight:700; margin-left:4px; font-size:14px; flex-shrink:0; }
+        .word-item.matched .play-btn { opacity:0.3; pointer-events:none; }
+        .word-item.speaking { border-color:#7c5cbf; background:#ede9fe; color:#5b21b6; transform:scale(1.02); box-shadow:0 0 20px rgba(124,92,191,0.3); }
+        .empty-hint { color:#889bb0; text-align:center; padding:20px 6px; font-size:14px; }
+        .feedback { margin-top:12px; background:#f1f7fe; border-radius:40px; padding:10px 16px; display:flex; justify-content:space-between; align-items:center; border-left:5px solid #3b82f6; font-size:14px; gap:8px; flex-wrap:wrap; }
+        .feedback .msg { color:#0b2b4a; font-weight:500; flex:1; font-size:13px; word-break:break-word; min-width:80px; }
+        .feedback .badge { background:#1a4b7a; color:white; padding:3px 16px; border-radius:40px; font-weight:600; font-size:14px; flex-shrink:0; }
+        .footer { margin-top:12px; text-align:center; font-size:11px; color:#a0b5cc; border-top:1px solid #e7f0f8; padding-top:12px; }
+
+        .result-overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); display:none; justify-content:center; align-items:center; z-index:999; backdrop-filter:blur(4px); }
+        .result-overlay.show { display:flex; }
+        .result-box { background:white; border-radius:40px; padding:32px 28px 28px; max-width:360px; width:90%; text-align:center; box-shadow:0 20px 60px rgba(0,0,0,0.3); animation:popIn 0.4s ease; }
+        @keyframes popIn { 0% { transform:scale(0.8); opacity:0; } 100% { transform:scale(1); opacity:1; } }
+        .result-box .score-number { font-size:72px; font-weight:800; background:linear-gradient(135deg,#1a4b7a,#0e7b4c); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1.1; }
+        .result-box .score-label { font-size:16px; color:#4b6a8a; margin:4px 0 8px; }
+        .result-box .stats { font-size:14px; color:#5b6f87; margin:8px 0 16px; line-height:1.6; }
+        .result-box .stats span { font-weight:700; color:#0b2b4a; }
+        .result-box .btn-close { background:#1a4b7a; color:white; border:none; padding:12px 40px; border-radius:40px; font-size:16px; font-weight:600; cursor:pointer; transition:0.2s; }
+        .result-box .btn-close:active { transform:scale(0.95); background:#0f3a5f; }
+        .result-box .emoji-big { font-size:48px; margin-bottom:4px; }
+
+        .library-selector { display:flex; align-items:center; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
+        .library-selector label { font-size:13px; font-weight:600; color:#4b6a8a; flex-shrink:0; }
+        .library-selector .select-wrap { flex:1; min-width:120px; display:flex; gap:4px; align-items:center; }
+        .library-selector select { flex:1; padding:8px 12px; border:2px solid #d0ddee; border-radius:30px; font-size:14px; background:white; color:#0b2b4a; appearance:auto; min-width:80px; max-width:100%; }
+        .library-selector select:focus { border-color:#1a4b7a; outline:none; }
+        .library-selector .lib-badge { font-size:11px; background:#e6f5ec; color:#0e7b4c; padding:2px 12px; border-radius:30px; font-weight:600; flex-shrink:0; }
+        .library-selector .btn-del-lib { background:#fef2f2; border:3px solid #dc2626; border-radius:50%; width:36px; height:36px; font-size:16px; font-weight:900; color:#dc2626; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:0.2s; }
+        .library-selector .btn-del-lib:active { transform:scale(0.9); background:#fecaca; }
+        .library-selector .btn-del-lib:disabled { opacity:0.3; pointer-events:none; border-color:#9ca3af; color:#9ca3af; }
+
+        .upload-area { background:#fef9e7; border:2px dashed #d97706; border-radius:20px; padding:16px 18px; margin:10px 0 14px; display:none; }
+        .upload-area.show { display:block; }
+        .upload-area .upload-hint { font-size:13px; color:#92400e; text-align:center; margin-bottom:10px; }
+        .upload-area .upload-hint .supported { font-size:11px; color:#6b7280; }
+        .upload-area .upload-row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:center; }
+        .upload-area .upload-row input[type="text"] { flex:1; min-width:120px; font-size:13px; padding:8px 12px; border:1px solid #d0ddee; border-radius:10px; background:white; max-width:100%; }
+        .upload-area .upload-row input[type="file"] { flex:1; min-width:160px; font-size:12px; padding:6px; border:1px solid #d0ddee; border-radius:10px; background:white; max-width:100%; }
+        .upload-area .upload-row .btn-upload-confirm { background:#d97706; color:white; border:none; padding:8px 24px; border-radius:40px; font-weight:600; font-size:13px; cursor:pointer; flex-shrink:0; }
+        .upload-area .upload-row .btn-upload-confirm:active { background:#b45309; transform:scale(0.96); }
+        .upload-area .upload-row .btn-upload-cancel { background:#e5e7eb; color:#374151; border:none; padding:8px 20px; border-radius:40px; font-weight:600; font-size:13px; cursor:pointer; flex-shrink:0; }
+        .upload-area .upload-row .btn-upload-cancel:active { transform:scale(0.96); }
+        .upload-area .file-status { font-size:12px; color:#6b7280; text-align:center; margin-top:6px; max-height:80px; overflow-y:auto; line-height:1.6; word-break:break-word; }
+        .upload-area .file-status .warn { color:#dc2626; }
+        .upload-area .file-status .ok { color:#0e7b4c; }
+        .upload-area .file-count { font-size:12px; color:#6b7280; text-align:center; margin-top:4px; word-break:break-word; }
+        .upload-area .progress-bar { width:100%; height:6px; background:#e5e7eb; border-radius:10px; margin-top:8px; overflow:hidden; display:none; }
+        .upload-area .progress-bar.show { display:block; }
+        .upload-area .progress-bar .fill { height:100%; background:linear-gradient(90deg,#d97706,#f59e0b); width:0%; border-radius:10px; transition:width 0.3s; }
+
+        .game-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:4px; }
+        .col { background:#fafcfe; border-radius:20px; padding:4px 0 8px; border:1px solid #eef4fa; overflow:hidden; }
+        .col h2 { font-size:12px; font-weight:600; color:#2c4a6e; padding:4px 10px 6px; border-bottom:2px dashed #dce8f5; display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px; }
+        .col h2 span { font-size:11px; font-weight:400; color:#4b6a8a; }
+
+        .speech-activate { text-align:center; padding:6px; margin-bottom:8px; background:#fef3c7; border-radius:10px; border:1px solid #f59e0b; display:none; }
+        .speech-activate .btn-activate { padding:5px 16px; background:#1a4b7a; color:white; border:none; border-radius:20px; font-size:13px; cursor:pointer; }
+        .speech-activate .btn-activate:active { transform:scale(0.95); }
+        .speech-activate .status { font-size:12px; color:#92400e; margin-left:8px; }
+        .speech-activate .status.ready { color:#0e7b4c; }
+        .speech-activate .status.loading { color:#f59e0b; }
+
+        /* 纠错弹窗 */
+        .edit-overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); display:none; justify-content:center; align-items:center; z-index:1000; backdrop-filter:blur(4px); }
+        .edit-overlay.show { display:flex; }
+        .edit-box { background:white; border-radius:24px; padding:28px 24px 24px; max-width:420px; width:92%; max-height:90vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.3); animation:popIn 0.3s ease; }
+        .edit-box h2 { font-size:18px; font-weight:700; color:#0b2b4a; margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+        .edit-box .close-edit { background:none; border:none; font-size:24px; cursor:pointer; margin-left:auto; color:#889bb0; }
+        .edit-box .close-edit:active { transform:scale(0.9); }
+        .edit-box .form-group { margin-bottom:14px; }
+        .edit-box .form-group label { display:block; font-size:13px; font-weight:600; color:#4b6a8a; margin-bottom:4px; }
+        .edit-box .form-group input, .edit-box .form-group textarea { width:100%; padding:10px 12px; border:2px solid #d0ddee; border-radius:12px; font-size:14px; background:white; font-family:inherit; transition:0.2s; }
+        .edit-box .form-group input:focus, .edit-box .form-group textarea:focus { border-color:#1a4b7a; outline:none; box-shadow:0 0 0 3px rgba(26,75,122,0.15); }
+        .edit-box .form-group textarea { resize:vertical; min-height:50px; }
+        .edit-box .form-row { display:flex; gap:10px; }
+        .edit-box .form-row .form-group { flex:1; }
+        .edit-box .btn-edit-save { background:#8b5cf6; color:white; border:none; padding:12px 32px; border-radius:40px; font-size:16px; font-weight:600; cursor:pointer; width:100%; transition:0.2s; }
+        .edit-box .btn-edit-save:active { transform:scale(0.96); background:#7c3aed; }
+        .edit-box .btn-edit-cancel { background:#e5e7eb; color:#374151; border:none; padding:10px 24px; border-radius:40px; font-size:14px; font-weight:600; cursor:pointer; width:48%; transition:0.2s; }
+        .edit-box .btn-edit-cancel:active { transform:scale(0.96); }
+        .edit-box .btn-edit-del { background:#dc2626; color:white; border:none; padding:10px 24px; border-radius:40px; font-size:14px; font-weight:600; cursor:pointer; width:48%; transition:0.2s; }
+        .edit-box .btn-edit-del:active { transform:scale(0.96); background:#b91c1c; }
+        .edit-box .btn-row { display:flex; gap:10px; margin-top:10px; }
+        .edit-box .hint { font-size:12px; color:#6b7280; margin-top:4px; }
+
+        @media (max-width:420px) { .app { padding:12px 10px 16px; } .word-item { font-size:13px; padding:6px 8px; } .word-item .text-content { font-size:13px; } .word-item .pos-tag { font-size:9px; } .toolbar .btn { font-size:12px; padding:8px 0; } .result-box .score-number { font-size:56px; } .library-selector select { font-size:13px; padding:6px 10px; } .library-selector .btn-del-lib { width:32px; height:32px; font-size:14px; } .game-grid { gap:6px; } .col h2 { font-size:11px; } }
+        @media (max-width:360px) { .word-item { font-size:11px; padding:5px 6px; } .word-item .text-content { font-size:11px; } .word-item .pos-tag { font-size:8px; padding:1px 5px; } .game-grid { gap:4px; } .col { padding:2px 0 4px; } .col h2 { font-size:10px; padding:3px 6px 4px; } .word-list { gap:3px; padding:4px 4px; } }
+        @media (max-width:320px) { .game-grid { grid-template-columns:1fr; gap:6px; } }
+    </style>
+</head>
+<body>
+<div class="app" id="app">
+    <div class="header">
+        <h1>🔗 连线配对 <span id="totalCount">0</span></h1>
+        <span style="font-size:14px; color:#4b6a8a;" id="pairInfo">0/10</span>
+    </div>
+    <div class="status-bar">
+        <span id="progressText">✅ 已配对 0 对</span>
+        <span class="score" id="scoreDisplay">0分</span>
+        <span class="remain" id="remainDisplay">剩余 0</span>
+        <span class="stats" id="statsDisplay">0/0</span>
+    </div>
+
+    <div class="speech-activate" id="speechActivate">
+        <span class="status loading" id="speechStatus">⏳ 正在加载语音引擎...</span>
+        <button class="btn-activate" id="activateSpeechBtn">🔊 点击激活语音</button>
+    </div>
+
+    <div class="library-selector">
+        <label for="librarySelect">📚 词库：</label>
+        <div class="select-wrap">
+            <select id="librarySelect"></select>
+            <button class="btn-del-lib" id="delLibBtn" title="删除当前词库">✕</button>
+        </div>
+        <span class="lib-badge" id="libBadge">已加载</span>
+    </div>
+
+    <div class="toolbar">
+        <button class="btn" id="shuffleBtn">🔄 打乱</button>
+        <button class="btn btn-primary" id="resetBtn">↺ 重置</button>
+        <button class="btn btn-success" id="randomBtn">🎲 随机<span id="randomCount">10</span>个</button>
+        <button class="btn btn-speak" id="speakAllBtn">🔊 朗读全部</button>
+        <button class="btn btn-upload" id="uploadToggleBtn">📤 上传词库</button>
+        <button class="btn btn-edit" id="editModeBtn">✏️ 纠错</button>
+        <button class="btn btn-warning" id="restoreLibBtn">↩️ 恢复词库</button>
+    </div>
+
+    <div class="upload-area" id="uploadArea">
+        <div class="upload-hint">
+            📝 智能识别单词配对 · 支持多种格式<br>
+            <span class="supported">支持: 逗号/Tab/冒号/括号/空格分隔 · 自动判断中英文方向</span>
+        </div>
+        <div class="upload-row">
+            <input type="text" id="libraryNameInput" placeholder="词库名称" value="我的词库">
+            <input type="file" id="fileInput" accept=".txt" multiple>
+        </div>
+        <div class="upload-row" style="margin-top:8px;">
+            <button class="btn-upload-confirm" id="uploadConfirmBtn">✅ 智能识别并入库</button>
+            <button class="btn-upload-cancel" id="uploadCancelBtn">取消</button>
+        </div>
+        <div class="file-status" id="fileStatus">📁 未选择文件</div>
+        <div class="file-count" id="fileCount"></div>
+        <div class="progress-bar" id="progressBar">
+            <div class="fill" id="progressFill"></div>
+        </div>
+    </div>
+
+    <div class="game-grid">
+        <div class="col" id="leftCol">
+            <h2>📖 单词 <span id="leftCount">(0)</span></h2>
+            <div class="word-list" id="leftList"></div>
+        </div>
+        <div class="col" id="rightCol">
+            <h2>📝 释义 <span id="rightCount">(0)</span></h2>
+            <div class="word-list" id="rightList"></div>
+        </div>
+    </div>
+    <div class="feedback">
+        <span class="msg" id="feedbackMsg">💡 点击左侧单词，再点击右侧释义配对</span>
+        <span class="badge" id="feedbackScore">0分</span>
+    </div>
+    <div class="footer">📚 智能分页 · 配一个补一个 · 点击✏️纠错可修改单词</div>
+</div>
+
+<div class="result-overlay" id="resultOverlay">
+    <div class="result-box">
+        <div class="emoji-big" id="resultEmoji">🎉</div>
+        <div class="score-number" id="resultScore">100</div>
+        <div class="score-label">分</div>
+        <div class="stats" id="resultStats">
+            作对 <span id="resultCorrect">0</span> 次 · 总作答 <span id="resultTotal">0</span> 次
+        </div>
+        <button class="btn-close" id="resultCloseBtn">继续学习</button>
+    </div>
+</div>
+
+<!-- 纠错弹窗 -->
+<div class="edit-overlay" id="editOverlay">
+    <div class="edit-box">
+        <h2>
+            ✏️ 纠错
+            <button class="close-edit" id="closeEditBtn">✕</button>
+        </h2>
+        <div style="font-size:13px; color:#6b7280; margin-bottom:14px;">修改当前词库中的单词信息</div>
+        <div class="form-group">
+            <label>📖 单词</label>
+            <input type="text" id="editWord" placeholder="输入正确的单词">
+        </div>
+        <div class="form-group">
+            <label>📝 释义</label>
+            <textarea id="editMeaning" placeholder="输入正确的释义"></textarea>
+        </div>
+        <div class="form-group">
+            <label>🏷️ 词性 (如: n. v. adj. adv. prep. conj. pron. phr.)</label>
+            <input type="text" id="editPos" placeholder="输入词性缩写">
+            <div class="hint">常用: n. 名词 | v. 动词 | adj. 形容词 | adv. 副词 | prep. 介词 | conj. 连词 | pron. 代词 | phr. 短语</div>
+        </div>
+        <div class="btn-row">
+            <button class="btn-edit-cancel" id="editCancelBtn">取消</button>
+            <button class="btn-edit-del" id="editDeleteBtn">🗑️ 删除此词</button>
+        </div>
+        <button class="btn-edit-save" id="editSaveBtn" style="margin-top:10px;">✅ 保存修改</button>
+    </div>
+</div>
+
+<script>
+// ============================================================
+// ✅ 程序启动
+// ============================================================
+console.log('🚀 程序启动');
+
+(function(){
+    // ============================================================
+    // 1. 默认词库
+    // ============================================================
+    var DEFAULT_PAIRS = [
+        {word:"underwater",meaning:"水下的；在水下"},
+        {word:"unfortunately",meaning:"不幸地；可惜地"},
+        {word:"unless",meaning:"除非；如果不"},
+        {word:"unlock",meaning:"打开……的锁；发现；揭开"},
+        {word:"unlucky",meaning:"不幸的；不顺利的；不吉利的"},
+        {word:"unsafe",meaning:"不安全的；危险的"},
+        {word:"unusual",meaning:"特别的；不寻常的"},
+        {word:"upset",meaning:"难过的；沮丧的"},
+        {word:"usual",meaning:"通常的；寻常的"},
+        {word:"warm",meaning:"热情的；温暖的"},
+        {word:"warn",meaning:"警告；提醒注意"},
+        {word:"waterfall",meaning:"瀑布"},
+        {word:"wave",meaning:"波浪；波；挥手"},
+        {word:"weak",meaning:"虚弱的；能力弱的"},
+        {word:"whether",meaning:"是否"},
+        {word:"wildfire",meaning:"野火"},
+        {word:"willing",meaning:"乐意的；愿意的"},
+        {word:"wonder",meaning:"奇观；惊叹；琢磨"},
+        {word:"worst",meaning:"最坏的；最糟的"},
+        {word:"worth",meaning:"值得；有价值"},
+        {word:"yoga",meaning:"瑜伽"},
+        {word:"youth",meaning:"青年；青年时期"},
+        {word:"sudden",meaning:"突然的；骤然发生的"},
+        {word:"suffer",meaning:"受苦；遭受"},
+        {word:"suggestion",meaning:"建议；提议"},
+        {word:"summary",meaning:"总结；概要"},
+        {word:"supply",meaning:"供应（量）；补给（品）；供给"},
+        {word:"surface",meaning:"表面；表层"},
+        {word:"surprising",meaning:"出人意外的；令人吃惊的"},
+        {word:"surprisingly",meaning:"出人意料地；惊人地"},
+        {word:"survive",meaning:"生存；存活；艰难度过"},
+        {word:"talent",meaning:"才能；天赋；天才"},
+        {word:"teammate",meaning:"同队队员；队友"},
+        {word:"teamwork",meaning:"团队合作"},
+        {word:"teenage",meaning:"青少年的"},
+        {word:"temper",meaning:"脾气；怒气"},
+        {word:"terribly",meaning:"非常糟糕地"},
+        {word:"test",meaning:"检查；测验"},
+        {word:"thankful",meaning:"感谢的；感激的"},
+        {word:"thankfully",meaning:"幸亏；感激地"},
+        {word:"uncommon",meaning:"罕见的；不寻常的"},
+        {word:"selfish",meaning:"自私的"},
+        {word:"sore",meaning:"疼痛的；酸痛的"},
+        {word:"shock",meaning:"震惊；使震惊"},
+        {word:"shoulder",meaning:"肩膀；肩部"},
+        {word:"shut",meaning:"关闭；合上"},
+        {word:"since",meaning:"自从……以来；既然"},
+        {word:"single",meaning:"单个的；单身的"},
+        {word:"ski",meaning:"滑雪"},
+        {word:"smoke",meaning:"烟；吸烟；冒烟"},
+        {word:"snowstorm",meaning:"雪暴；暴风雪"},
+        {word:"society",meaning:"社会；社团"},
+        {word:"southern",meaning:"南部的；向南的"},
+        {word:"stadium",meaning:"体育馆；运动场"},
+        {word:"stage",meaning:"舞台；阶段"},
+        {word:"stamp",meaning:"邮票"},
+        {word:"standard",meaning:"标准；水平的"},
+        {word:"state",meaning:"状态；国家；州；陈述"},
+        {word:"steal",meaning:"偷；窃取"},
+        {word:"stomach",meaning:"胃；腹部"},
+        {word:"stomachache",meaning:"胃痛；肚子疼"},
+        {word:"stove",meaning:"厨房灶具；炉子"},
+        {word:"stress",meaning:"精神压力；紧张"},
+        {word:"strict",meaning:"严厉的；严格的"},
+        {word:"structure",meaning:"结构（体）；构造；体系"},
+        {word:"submersible",meaning:"潜水艇"},
+        {word:"success",meaning:"成功"},
+        {word:"successful",meaning:"成功的；有成就的"},
+        {word:"successfully",meaning:"成功地；顺利地"},
+        {word:"normal",meaning:"正常的；普通的"},
+        {word:"object",meaning:"物品；宾语"},
+        {word:"occasion",meaning:"场合；重大活动"},
+        {word:"ordinary",meaning:"平凡的；普通的"},
+        {word:"organization",meaning:"组织；团体；机构"},
+        {word:"ourselves",meaning:"我们自己"},
+        {word:"outing",meaning:"外出游玩；远足"},
+        {word:"owner",meaning:"主人；物主"},
+        {word:"pain",meaning:"疼痛；痛苦"},
+        {word:"painful",meaning:"令人痛苦的"},
+        {word:"palm",meaning:"手掌"},
+        {word:"panic",meaning:"惊恐；恐慌"},
+        {word:"patient",meaning:"病人"},
+        {word:"peanut",meaning:"花生"},
+        {word:"physics",meaning:"物理；物理学"},
+        {word:"pill",meaning:"药丸；药片"},
+        {word:"player",meaning:"运动员；选手"},
+        {word:"plenty",meaning:"充足；丰富；大量"},
+        {word:"pocket",meaning:"口袋"},
+        {word:"poem",meaning:"诗"},
+        {word:"pool",meaning:"池塘；水坑"},
+        {word:"postcard",meaning:"明信片"},
+        {word:"power",meaning:"电力供应；能量；力量"},
+        {word:"practical",meaning:"实用的；实际的"},
+        {word:"preparation",meaning:"准备（工作）；预备"},
+        {word:"present",meaning:"礼物"},
+        {word:"press",meaning:"压；按"},
+        {word:"pressure",meaning:"压力"},
+        {word:"primary",meaning:"小学教育的；首要的"},
+        {word:"private",meaning:"不喜欢谈论私事的；私人的"},
+        {word:"program",meaning:"编写程序；程序；节目；项目"},
+        {word:"programmer",meaning:"程序设计员"},
+        {word:"proper",meaning:"恰当的；正确的"},
+        {word:"proud",meaning:"骄傲的；自豪的"},
+        {word:"level",meaning:"高度；水平；程度"},
+        {word:"librarian",meaning:"图书馆管理员"},
+        {word:"lie",meaning:"躺；位于；说谎"},
+        {word:"lifetime",meaning:"一生；终身"},
+        {word:"literary",meaning:"文学的；文学上的"},
+        {word:"located",meaning:"位于；坐落在"},
+        {word:"lock",meaning:"用锁锁上"},
+        {word:"lonely",meaning:"孤独的；寂寞的"},
+        {word:"lost",meaning:"迷路的；丢失的；失去的"},
+        {word:"luckily",meaning:"幸运地"},
+        {word:"mad",meaning:"很生气；疯狂的"},
+        {word:"madam",meaning:"女士；夫人"},
+        {word:"main",meaning:"主要的"},
+        {word:"manage",meaning:"完成（困难的事）；管理"},
+        {word:"manner",meaning:"方式；方法；礼仪"},
+        {word:"married",meaning:"已婚的；婚姻的"},
+        {word:"marry",meaning:"结婚；娶；嫁"},
+        {word:"mask",meaning:"口罩"},
+        {word:"mean",meaning:"刻薄的；吝啬的"},
+        {word:"measure",meaning:"测量；量度为"},
+        {word:"medicine",meaning:"药；医学"},
+        {word:"mile",meaning:"英里"},
+        {word:"missing",meaning:"失踪的；丢失的"},
+        {word:"mystery",meaning:"悬疑小说；神秘的事物"},
+        {word:"natural",meaning:"自然的；天然的；天生的"},
+        {word:"naughty",meaning:"淘气的"},
+        {word:"nearby",meaning:"附近"},
+        {word:"nearly",meaning:"几乎；差不多；将近"},
+        {word:"negative",meaning:"否定的；消极的"},
+        {word:"neighbourhood",meaning:"街区；临近的地方"},
+        {word:"nervously",meaning:"紧张不安地"},
+        {word:"nicely",meaning:"漂亮地；令人愉快地"},
+        {word:"nobody",meaning:"没有人；谁也不"},
+        {word:"heartbeat",meaning:"心跳（声）"},
+        {word:"hero",meaning:"英雄；男主角；偶像"},
+        {word:"hidden",meaning:"隐藏的；秘密的"},
+        {word:"hide",meaning:"隐藏；躲藏"},
+        {word:"historical",meaning:"历史的；有关历史的"},
+        {word:"hit",meaning:"碰撞；击；打"},
+        {word:"hug",meaning:"拥抱"},
+        {word:"ice-skate",meaning:"滑冰；溜冰"},
+        {word:"idiom",meaning:"习语；成语"},
+        {word:"illness",meaning:"疾病"},
+        {word:"importantly",meaning:"重要地"},
+        {word:"impression",meaning:"印象"},
+        {word:"improper",meaning:"不合适的"},
+        {word:"include",meaning:"包含；包括"},
+        {word:"indian",meaning:"印度的；印度人"},
+        {word:"informal",meaning:"非正式的"},
+        {word:"injury",meaning:"伤害；损伤"},
+        {word:"jeans",meaning:"牛仔裤"},
+        {word:"joyful",meaning:"高兴的；令人愉快的"},
+        {word:"kingdom",meaning:"王国"},
+        {word:"kiss",meaning:"亲吻"},
+        {word:"knife",meaning:"刀"},
+        {word:"knowledge",meaning:"知识；学问"},
+        {word:"ladder",meaning:"梯子；阶梯；途径"},
+        {word:"lady",meaning:"女士；淑女"},
+        {word:"landslide",meaning:"滑坡；塌方"},
+        {word:"lastly",meaning:"最后"},
+        {word:"failure",meaning:"失败"},
+        {word:"false",meaning:"错误的；不真实的"},
+        {word:"fantasy",meaning:"幻想作品；幻想"},
+        {word:"fault",meaning:"过错；责任"},
+        {word:"fear",meaning:"害怕；担忧"},
+        {word:"fever",meaning:"发烧"},
+        {word:"fiction",meaning:"小说"},
+        {word:"firefighter",meaning:"消防队员"},
+        {word:"firstly",meaning:"第一；首先"},
+        {word:"fist",meaning:"拳头"},
+        {word:"flame",meaning:"火焰"},
+        {word:"flood",meaning:"水灾；洪水；泛滥"},
+        {word:"flu",meaning:"流行性感冒"},
+        {word:"force",meaning:"强迫；力；武力"},
+        {word:"foreign",meaning:"外国的；国外的"},
+        {word:"forgive",meaning:"原谅；宽恕"},
+        {word:"fork",meaning:"叉子"},
+        {word:"formal",meaning:"正式的"},
+        {word:"gas",meaning:"气体；燃气"},
+        {word:"gentle",meaning:"温柔的"},
+        {word:"gentleman",meaning:"先生；君子"},
+        {word:"guard",meaning:"卫兵；保卫"},
+        {word:"happily",meaning:"快乐地；高兴地"},
+        {word:"harm",meaning:"伤害；损害"},
+        {word:"harmful",meaning:"有害的"},
+        {word:"headache",meaning:"头痛"},
+        {word:"correct",meaning:"正确的；恰当的"},
+        {word:"correctly",meaning:"正确地；恰当地"},
+        {word:"cough",meaning:"咳嗽"},
+        {word:"cross",meaning:"穿越；横过；交叉"},
+        {word:"cubic",meaning:"立方的"},
+        {word:"cultural",meaning:"与文化有关的；文化的"},
+        {word:"curiosity",meaning:"好奇心；求知欲"},
+        {word:"curious",meaning:"好奇的；求知欲强的"},
+        {word:"curry",meaning:"咖喱菜"},
+        {word:"custom",meaning:"习俗"},
+        {word:"dare",meaning:"敢于"},
+        {word:"deal",meaning:"交易；协议"},
+        {word:"death",meaning:"死亡；毁灭"},
+        {word:"decision",meaning:"决定"},
+        {word:"deep",meaning:"深的；有……深的"},
+        {word:"defeat",meaning:"击败；战胜"},
+        {word:"destroy",meaning:"破坏；摧毁"},
+        {word:"detective",meaning:"侦探"},
+        {word:"determined",meaning:"有决心的；坚决的"},
+        {word:"development",meaning:"发展；壮大"},
+        {word:"differently",meaning:"不同地"},
+        {word:"distance",meaning:"距离；遥远"},
+        {word:"dive",meaning:"潜水；跳水；俯冲"},
+        {word:"donate",meaning:"捐赠；赠送"},
+        {word:"donation",meaning:"捐赠物；捐赠"},
+        {word:"doubt",meaning:"怀疑"},
+        {word:"drought",meaning:"旱灾；干旱"},
+        {word:"earthquake",meaning:"地震"},
+        {word:"effect",meaning:"影响；结果"},
+        {word:"effort",meaning:"努力；艰难的尝试"},
+        {word:"elbow",meaning:"肘；肘部"},
+        {word:"elder",meaning:"年纪较长的"},
+        {word:"elderly",meaning:"年纪较大的；上了年纪的"},
+        {word:"embarrassed",meaning:"尴尬的"},
+        {word:"embarrassing",meaning:"使人难堪的"},
+        {word:"emotion",meaning:"情绪；情感"},
+        {word:"enemy",meaning:"敌人"},
+        {word:"enter",meaning:"进入"},
+        {word:"environment",meaning:"环境"},
+        {word:"behave",meaning:"表现；举止得体"},
+        {word:"below",meaning:"在……下面；低于"},
+        {word:"bit",meaning:"有点儿；稍微"},
+        {word:"bleed",meaning:"流血；出血"},
+        {word:"blouse",meaning:"女式衬衫"},
+        {word:"bone",meaning:"骨头"},
+        {word:"bottom",meaning:"底部；最下部"},
+        {word:"bow",meaning:"鞠躬"},
+        {word:"brightness",meaning:"亮度"},
+        {word:"bruised",meaning:"受了伤"},
+        {word:"bully",meaning:"霸凌；恐吓；恶霸"},
+        {word:"bump",meaning:"碰；撞；肿块"},
+        {word:"burn",meaning:"燃烧；着火；烧伤"},
+        {word:"cage",meaning:"笼子"},
+        {word:"calligraphy",meaning:"书法"},
+        {word:"can",meaning:"金属罐；一罐的量"},
+        {word:"careless",meaning:"不小心的；粗心的"},
+        {word:"changeable",meaning:"可能变化的；易变的"},
+        {word:"charity",meaning:"慈善机构；慈善事业"},
+        {word:"chat",meaning:"闲聊"},
+        {word:"check",meaning:"检查；查明；调查"},
+        {word:"cheek",meaning:"脸颊"},
+        {word:"chopstick",meaning:"筷子"},
+        {word:"civilization",meaning:"文明"},
+        {word:"clear",meaning:"清晰的；清楚的；清理"},
+        {word:"clearly",meaning:"清楚地"},
+        {word:"cliff",meaning:"悬崖；峭壁"},
+        {word:"climax",meaning:"高潮；极点"},
+        {word:"climber",meaning:"攀登者；登山者"},
+        {word:"coach",meaning:"教练"},
+        {word:"coast",meaning:"海岸；海滨"},
+        {word:"coin",meaning:"硬币"},
+        {word:"completely",meaning:"完全地；彻底地"},
+        {word:"condition",meaning:"环境；条件；状态"},
+        {word:"confused",meaning:"困惑的"},
+        {word:"confusing",meaning:"令人困惑的；难以理解的"},
+        {word:"congratulate",meaning:"祝贺"},
+        {word:"consider",meaning:"认为；仔细考虑"},
+        {word:"control",meaning:"控制"},
+        {word:"coral",meaning:"珊瑚；珊瑚虫"}
+    ];
+
+    // ============================================================
+    // 2. 词性判断
+    // ============================================================
+    function guessPos(word, meaning) {
+        if (!word) return '';
+        var lower = word.toLowerCase().trim();
+        var m = meaning ? meaning.toLowerCase() : '';
+        
+        // 短语优先判断（包含空格的单词）
+        if (word.indexOf(' ') !== -1) {
+            if (m.indexOf('了') !== -1 || m.indexOf('过') !== -1 || m.indexOf('着') !== -1 ||
+                m.indexOf('使') !== -1 || m.indexOf('让') !== -1 || m.indexOf('把') !== -1 ||
+                m.indexOf('做') !== -1 || m.indexOf('进行') !== -1 || m.indexOf('给') !== -1 ||
+                m.indexOf('打') !== -1 || m.indexOf('放') !== -1 || m.indexOf('拿') !== -1 ||
+                m.indexOf('讲') !== -1 || m.indexOf('说') !== -1 || m.indexOf('看') !== -1 ||
+                m.indexOf('吃') !== -1 || m.indexOf('喝') !== -1 || m.indexOf('走') !== -1 ||
+                m.indexOf('跑') !== -1 || m.indexOf('跳') !== -1 || m.indexOf('飞') !== -1) {
+                return 'phr. v.';
+            }
+            if (m.indexOf('在') !== -1 || m.indexOf('到') !== -1 || m.indexOf('从') !== -1 ||
+                m.indexOf('关于') !== -1 || m.indexOf('对于') !== -1 || m.indexOf('为了') !== -1) {
+                return 'phr. prep.';
+            }
+            return 'phr.';
+        }
+        
+        // 后缀判断
+        if (lower.endsWith('tion') || lower.endsWith('sion') || lower.endsWith('ment') || 
+            lower.endsWith('ness') || lower.endsWith('ity') || lower.endsWith('ence') || 
+            lower.endsWith('ance') || lower.endsWith('ism') || lower.endsWith('ship') ||
+            lower.endsWith('dom') || lower.endsWith('hood') || lower.endsWith('or') ||
+            lower.endsWith('er') || lower.endsWith('ist') || lower.endsWith('ian') ||
+            lower.endsWith('age') || lower.endsWith('ure') || lower.endsWith('ture') ||
+            lower.endsWith('sure') || lower.endsWith('ty') || lower.endsWith('cy') ||
+            lower.endsWith('graphy') || lower.endsWith('logy') || lower.endsWith('metry')) {
+            return 'n.';
+        }
+        if (lower.endsWith('ed') || lower.endsWith('ing') || lower.endsWith('en') || 
+            lower.endsWith('ate') || lower.endsWith('ify') || lower.endsWith('ize') ||
+            lower.endsWith('ise') || lower.endsWith('ish') || lower.endsWith('ure') ||
+            lower.endsWith('sure')) {
+            return 'v.';
+        }
+        if (lower.endsWith('ful') || lower.endsWith('ous') || lower.endsWith('ive') || 
+            lower.endsWith('able') || lower.endsWith('ible') || lower.endsWith('al') ||
+            lower.endsWith('ent') || lower.endsWith('ant') || lower.endsWith('less') ||
+            lower.endsWith('ic') || lower.endsWith('ical') || lower.endsWith('ish') ||
+            lower.endsWith('ary') || lower.endsWith('ory') || lower.endsWith('some') ||
+            lower.endsWith('y') || lower.endsWith('like')) {
+            return 'adj.';
+        }
+        if (lower.endsWith('ly')) {
+            return 'adv.';
+        }
+        
+        // 词义推断
+        if (m) {
+            if (m.indexOf('了') !== -1 || m.indexOf('过') !== -1 || m.indexOf('着') !== -1 ||
+                m.indexOf('使') !== -1 || m.indexOf('让') !== -1 || m.indexOf('把') !== -1 ||
+                m.indexOf('做') !== -1 || m.indexOf('进行') !== -1) {
+                return 'v.';
+            }
+            if (m.indexOf('的') !== -1 || m.indexOf('可') !== -1 || m.indexOf('很') !== -1 ||
+                m.indexOf('非常') !== -1 || m.indexOf('十分') !== -1) {
+                return 'adj.';
+            }
+            if (m.endsWith('地')) {
+                return 'adv.';
+            }
+            if (m.indexOf('人') !== -1 || m.indexOf('物') !== -1 || m.indexOf('事') !== -1 || 
+                m.indexOf('地方') !== -1 || m.indexOf('事物') !== -1 || m.indexOf('东西') !== -1) {
+                return 'n.';
+            }
+        }
+        
+        // 手动映射
+        var extraMap = {
+            'apple': 'n.', 'book': 'n.', 'cat': 'n.', 'dog': 'n.',
+            'egg': 'n.', 'fish': 'n.', 'girl': 'n.', 'hat': 'n.',
+            'ice': 'n.', 'juice': 'n.', 'king': 'n.', 'queen': 'n.',
+            'water': 'n.', 'fire': 'n.', 'earth': 'n.', 'air': 'n.',
+            'sun': 'n.', 'moon': 'n.', 'star': 'n.', 'tree': 'n.',
+            'house': 'n.', 'home': 'n.', 'school': 'n.', 'city': 'n.',
+            'man': 'n.', 'woman': 'n.', 'child': 'n.', 'people': 'n.',
+            'friend': 'n.', 'family': 'n.', 'father': 'n.', 'mother': 'n.',
+            'brother': 'n.', 'sister': 'n.', 'teacher': 'n.', 'student': 'n.',
+            'doctor': 'n.', 'nurse': 'n.', 'driver': 'n.', 'farmer': 'n.',
+            'engineer': 'n.', 'lawyer': 'n.', 'artist': 'n.', 'writer': 'n.',
+            'music': 'n.', 'art': 'n.', 'math': 'n.', 'science': 'n.',
+            'history': 'n.', 'geography': 'n.', 'biology': 'n.', 'chemistry': 'n.',
+            'physics': 'n.', 'computer': 'n.', 'phone': 'n.', 'table': 'n.',
+            'chair': 'n.', 'door': 'n.', 'window': 'n.', 'wall': 'n.',
+            'room': 'n.', 'kitchen': 'n.', 'bathroom': 'n.', 'bedroom': 'n.',
+            'happy': 'adj.', 'sad': 'adj.', 'big': 'adj.', 'small': 'adj.',
+            'fast': 'adj.', 'slow': 'adj.', 'good': 'adj.', 'bad': 'adj.',
+            'new': 'adj.', 'old': 'adj.', 'young': 'adj.', 'tall': 'adj.',
+            'short': 'adj.', 'long': 'adj.', 'wide': 'adj.', 'deep': 'adj.',
+            'high': 'adj.', 'low': 'adj.', 'easy': 'adj.', 'hard': 'adj.',
+            'soft': 'adj.', 'hot': 'adj.', 'cold': 'adj.', 'warm': 'adj.',
+            'cool': 'adj.', 'clean': 'adj.', 'dirty': 'adj.', 'dark': 'adj.',
+            'bright': 'adj.', 'safe': 'adj.', 'dangerous': 'adj.', 'cheap': 'adj.',
+            'expensive': 'adj.', 'beautiful': 'adj.', 'handsome': 'adj.', 'pretty': 'adj.',
+            'ugly': 'adj.', 'clever': 'adj.', 'stupid': 'adj.', 'kind': 'adj.',
+            'nice': 'adj.', 'polite': 'adj.', 'rude': 'adj.', 'friendly': 'adj.',
+            'lazy': 'adj.', 'brave': 'adj.', 'honest': 'adj.', 'selfish': 'adj.',
+            'generous': 'adj.', 'wise': 'adj.', 'foolish': 'adj.', 'proud': 'adj.',
+            'humble': 'adj.', 'rich': 'adj.', 'poor': 'adj.', 'wealthy': 'adj.',
+            'healthy': 'adj.', 'sick': 'adj.', 'strong': 'adj.', 'weak': 'adj.',
+            'powerful': 'adj.', 'gentle': 'adj.', 'rough': 'adj.', 'smooth': 'adj.',
+            'run': 'v.', 'walk': 'v.', 'eat': 'v.', 'drink': 'v.',
+            'sleep': 'v.', 'see': 'v.', 'hear': 'v.', 'speak': 'v.',
+            'read': 'v.', 'write': 'v.', 'draw': 'v.', 'sing': 'v.',
+            'dance': 'v.', 'play': 'v.', 'work': 'v.', 'study': 'v.',
+            'teach': 'v.', 'learn': 'v.', 'help': 'v.', 'give': 'v.',
+            'take': 'v.', 'make': 'v.', 'do': 'v.', 'go': 'v.',
+            'come': 'v.', 'arrive': 'v.', 'leave': 'v.', 'return': 'v.',
+            'love': 'v.', 'like': 'v.', 'hate': 'v.', 'want': 'v.',
+            'need': 'v.', 'have': 'v.', 'get': 'v.', 'use': 'v.',
+            'call': 'v.', 'ask': 'v.', 'answer': 'v.', 'tell': 'v.',
+            'shout': 'v.', 'whisper': 'v.', 'laugh': 'v.', 'cry': 'v.',
+            'fight': 'v.', 'win': 'v.', 'lose': 'v.', 'try': 'v.',
+            'believe': 'v.', 'think': 'v.', 'know': 'v.', 'understand': 'v.',
+            'forget': 'v.', 'remember': 'v.', 'enjoy': 'v.', 'prefer': 'v.',
+            'in': 'prep.', 'on': 'prep.', 'at': 'prep.', 'of': 'prep.',
+            'to': 'prep.', 'for': 'prep.', 'with': 'prep.', 'from': 'prep.',
+            'by': 'prep.', 'about': 'prep.', 'like': 'prep.', 'after': 'prep.',
+            'before': 'prep.', 'during': 'prep.', 'since': 'conj.', 'unless': 'conj.',
+            'while': 'conj.', 'because': 'conj.', 'although': 'conj.', 'whether': 'conj.',
+            'until': 'conj.', 'if': 'conj.', 'than': 'conj.', 'that': 'conj.',
+            'though': 'conj.', 'so': 'conj.', 'as': 'conj.', 'nor': 'conj.',
+            'or': 'conj.', 'yet': 'conj.', 'but': 'conj.', 'and': 'conj.',
+            'i': 'pron.', 'you': 'pron.', 'he': 'pron.', 'she': 'pron.',
+            'it': 'pron.', 'we': 'pron.', 'they': 'pron.', 'me': 'pron.',
+            'him': 'pron.', 'her': 'pron.', 'us': 'pron.', 'them': 'pron.',
+            'my': 'pron.', 'your': 'pron.', 'his': 'pron.', 'our': 'pron.',
+            'their': 'pron.', 'mine': 'pron.', 'yours': 'pron.', 'ours': 'pron.',
+            'theirs': 'pron.', 'myself': 'pron.', 'yourself': 'pron.',
+            'himself': 'pron.', 'herself': 'pron.', 'itself': 'pron.', 'ourselves': 'pron.',
+            'themselves': 'pron.', 'can': 'modal v.', 'could': 'modal v.',
+            'may': 'modal v.', 'might': 'modal v.', 'must': 'modal v.',
+            'shall': 'modal v.', 'should': 'modal v.', 'will': 'modal v.',
+            'would': 'modal v.'
+        };
+        if (extraMap[lower]) return extraMap[lower];
+        
+        return 'n.';
+    }
+
+    // ============================================================
+    // 3. 音效引擎
+    // ============================================================
+    var audioCtx = null;
+
+    function initAudio() {
+        if (!audioCtx) {
+            try {
+                audioCtx = new(window.AudioContext || window.webkitAudioContext)();
+            } catch(e) {
+                console.log('AudioContext创建失败:', e);
+                return null;
+            }
+        }
+        if (audioCtx && audioCtx.state === 'suspended') {
+            try { audioCtx.resume(); } catch(e) {}
+        }
+        return audioCtx;
+    }
+
+    function playRingtone() {
+        try {
+            var ctx = initAudio();
+            if (!ctx) return;
+            var now = ctx.currentTime;
+            var melody = [
+                { freq: 523, delay: 0.00, dur: 0.12, gain: 0.12 },
+                { freq: 659, delay: 0.13, dur: 0.12, gain: 0.12 },
+                { freq: 784, delay: 0.26, dur: 0.12, gain: 0.12 },
+                { freq: 1047, delay: 0.39, dur: 0.15, gain: 0.14 }
+            ];
+            melody.forEach(function(n) {
+                var osc = ctx.createOscillator();
+                var gain = ctx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(n.freq, now + n.delay);
+                osc.frequency.exponentialRampToValueAtTime(n.freq * 1.002, now + n.delay + n.dur * 0.5);
+                gain.gain.setValueAtTime(n.gain, now + n.delay);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + n.delay + n.dur);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(now + n.delay);
+                osc.stop(now + n.delay + n.dur);
+            });
+        } catch (e) {}
+    }
+
+    function playChordError() {
+        try {
+            var ctx = initAudio();
+            if (!ctx) return;
+            var now = ctx.currentTime;
+            var chord = [300, 380, 480];
+            chord.forEach(function(freq) {
+                var osc = ctx.createOscillator();
+                var gain = ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(freq, now);
+                osc.frequency.exponentialRampToValueAtTime(freq * 0.7, now + 0.35);
+                gain.gain.setValueAtTime(0.06, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.38);
+            });
+        } catch (e) {}
+    }
+
+    function playDone() {
+        try {
+            var ctx = initAudio();
+            if (!ctx) return;
+            var now = ctx.currentTime;
+            var melody = [
+                { freq: 523, delay: 0.00, dur: 0.10, gain: 0.10 },
+                { freq: 587, delay: 0.12, dur: 0.10, gain: 0.10 },
+                { freq: 659, delay: 0.24, dur: 0.10, gain: 0.10 },
+                { freq: 784, delay: 0.36, dur: 0.12, gain: 0.11 },
+                { freq: 1047, delay: 0.50, dur: 0.18, gain: 0.14 }
+            ];
+            melody.forEach(function(n) {
+                var osc = ctx.createOscillator();
+                var gain = ctx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(n.freq, now + n.delay);
+                gain.gain.setValueAtTime(n.gain, now + n.delay);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + n.delay + n.dur);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(now + n.delay);
+                osc.stop(now + n.delay + n.dur);
+            });
+        } catch (e) {}
+    }
+
+    // ============================================================
+    // 4. 语音朗读
+    // ============================================================
+    var isSpeaking = false;
+    var speakQueue = [];
+    var currentSpeakingIndex = -1;
+    var isSpeakingAll = false;
+    var speechReady = false;
+    var speechActivated = false;
+
+    function waitForVoices(callback) {
+        var synth = window.speechSynthesis;
+        if (!synth) {
+            if (callback) callback();
+            return;
+        }
+        if (synth.getVoices().length > 0) {
+            speechReady = true;
+            if (callback) callback();
+            return;
+        }
+        var onVoicesChanged = function() {
+            speechReady = true;
+            synth.onvoiceschanged = null;
+            if (callback) callback();
+        };
+        synth.onvoiceschanged = onVoicesChanged;
+        setTimeout(function() {
+            speechReady = true;
+            synth.onvoiceschanged = null;
+            if (callback) callback();
+        }, 3000);
+    }
+
+    function getEnglishVoice(synth) {
+        var voices = synth.getVoices();
+        if (voices && voices.length > 0) {
+            var enUS = voices.find(function(v) { 
+                return v.lang === 'en-US' || v.lang.startsWith('en'); 
+            });
+            if (enUS) return enUS;
+            return voices[0];
+        }
+        return null;
+    }
+
+    function activateSpeech() {
+        if (speechActivated) {
+            updateFeedback('✅ 语音已激活', '#0e7b4c');
+            return;
+        }
+        var synth = window.speechSynthesis;
+        if (!synth) {
+            updateFeedback('⚠️ 您的浏览器不支持语音朗读', '#e74c3c');
+            return;
+        }
+        if (synth.speaking) { synth.cancel(); }
+        try {
+            var utter = new SpeechSynthesisUtterance('hello');
+            utter.volume = 0;
+            utter.rate = 1;
+            utter.pitch = 1;
+            utter.onend = function() {
+                speechActivated = true;
+                var el = document.getElementById('speechStatus');
+                if (el) { el.textContent = '✅ 语音已就绪'; el.className = 'status ready'; }
+                updateFeedback('✅ 语音已激活，可以朗读了！', '#0e7b4c');
+            };
+            utter.onerror = function() {
+                speechActivated = true;
+                var el = document.getElementById('speechStatus');
+                if (el) { el.textContent = '✅ 语音已就绪'; el.className = 'status ready'; }
+                updateFeedback('✅ 语音已激活', '#0e7b4c');
+            };
+            synth.speak(utter);
+            setTimeout(function() {
+                speechActivated = true;
+                var el = document.getElementById('speechStatus');
+                if (el) { el.textContent = '✅ 语音已就绪'; el.className = 'status ready'; }
+                if (synth.speaking) { synth.cancel(); }
+            }, 2000);
+        } catch (e) {
+            speechActivated = true;
+            var el = document.getElementById('speechStatus');
+            if (el) { el.textContent = '✅ 语音已就绪'; el.className = 'status ready'; }
+            updateFeedback('✅ 语音已激活', '#0e7b4c');
+        }
+    }
+
+    function speakWordOnly(word, callback) {
+        if (!speechActivated) {
+            activateSpeech();
+            setTimeout(function() { speakWordOnly(word, callback); }, 500);
+            return;
+        }
+        waitForVoices(function() {
+            try {
+                var synth = window.speechSynthesis;
+                if (!synth) { if (callback) callback(); return; }
+                if (synth.speaking) { synth.cancel(); }
+                var utter = new SpeechSynthesisUtterance(word);
+                utter.lang = 'en-US';
+                utter.rate = 0.85;
+                utter.pitch = 1;
+                utter.volume = 1;
+                var voice = getEnglishVoice(synth);
+                if (voice) { utter.voice = voice; }
+                utter.onend = function() { if (callback) callback(); };
+                utter.onerror = function() { if (callback) callback(); };
+                synth.speak(utter);
+            } catch (e) { if (callback) callback(); }
+        });
+    }
+
+    function speakSingleWord(word) {
+        if (isSpeakingAll) return;
+        speakWordOnly(word, null);
+    }
+
+    function checkSpeechSupport() {
+        var synth = window.speechSynthesis;
+        var statusEl = document.getElementById('speechStatus');
+        if (!synth) {
+            if (statusEl) { statusEl.textContent = '❌ 不支持语音'; statusEl.className = 'status'; }
+            return;
+        }
+        var voices = synth.getVoices();
+        if (voices && voices.length > 0) {
+            speechReady = true;
+            if (statusEl) { statusEl.textContent = '✅ 语音已就绪，点击激活'; statusEl.className = 'status ready'; }
+            return;
+        }
+        if (statusEl) { statusEl.textContent = '⏳ 正在加载语音引擎...'; statusEl.className = 'status loading'; }
+        synth.onvoiceschanged = function() {
+            var newVoices = synth.getVoices();
+            if (newVoices && newVoices.length > 0) {
+                speechReady = true;
+                if (statusEl) { statusEl.textContent = '✅ 语音已就绪，点击激活'; statusEl.className = 'status ready'; }
+            }
+        };
+        setTimeout(function() {
+            if (!speechReady) {
+                speechReady = true;
+                if (statusEl) { statusEl.textContent = '✅ 点击激活语音'; statusEl.className = 'status'; }
+            }
+        }, 3000);
+    }
+
+    // ============================================================
+    // 5. 动态分页计算
+    // ============================================================
+    function calculatePageSize() {
+        var width = window.innerWidth;
+        var height = window.innerHeight;
+        var baseSize = 10;
+        if (width < 360) { baseSize = 6; }
+        else if (width < 400) { baseSize = 7; }
+        else if (width < 450) { baseSize = 8; }
+        else if (width < 520) { baseSize = 9; }
+        else { baseSize = 10; }
+        if (height < 600) { baseSize = Math.max(4, baseSize - 2); }
+        else if (height < 700) { baseSize = Math.max(5, baseSize - 1); }
+        return Math.min(baseSize, 12);
+    }
+
+    var PAGE_SIZE = calculatePageSize();
+    var MAX_ATTEMPTS = 5;
+    document.getElementById('randomCount').textContent = PAGE_SIZE;
+
+    // ============================================================
+    // 6. 应用状态
+    // ============================================================
+    var wordStates = {};
+    var allPairs = [];
+    var originalAllPairs = [];
+    var activePairs = [];
+    var matchedPairIds = new Set();
+    var selectedId = null;
+    var selectedType = null;
+    var correctCount = 0;
+    var totalAttempts = 0;
+    var totalPairsCompleted = 0;
+    var totalPairsAvailable = 0;
+    var roundNumber = 1;
+
+    // 纠错模式
+    var editMode = false;
+    var editingPairId = null;
+
+    // ============================================================
+    // 7. 词库管理
+    // ============================================================
+    var libraries = {};
+    var currentLibraryName = '新人教八年级下册';
+    var libraryIdCounter = 0;
+
+    function saveLibraries() {
+        try {
+            var data = JSON.stringify(libraries);
+            localStorage.setItem('wordMatchLibraries', data);
+            localStorage.setItem('currentLibrary', currentLibraryName);
+        } catch (e) {}
+    }
+
+    function loadLibrariesFromStorage() {
+        try {
+            var data = localStorage.getItem('wordMatchLibraries');
+            if (data) { libraries = JSON.parse(data); }
+            var current = localStorage.getItem('currentLibrary');
+            if (current && libraries[current]) { currentLibraryName = current; }
+        } catch (e) {}
+    }
+
+    function initDefaultLibrary() {
+        if (!libraries['新人教八年级下册']) {
+            libraries['新人教八年级下册'] = {
+                id: libraryIdCounter++,
+                pairs: DEFAULT_PAIRS.map(function(p) { return { word: p.word, meaning: p.meaning }; }),
+                wordCount: DEFAULT_PAIRS.length
+            };
+        }
+        currentLibraryName = '新人教八年级下册';
+        saveLibraries();
+    }
+
+    function addLibrary(name, pairs) {
+        if (!name || name.trim() === '') name = '未命名词库';
+        if (libraries[name]) {
+            var suffix = 1;
+            while (libraries[name + ' (' + suffix + ')']) { suffix++; }
+            name = name + ' (' + suffix + ')';
+        }
+        libraries[name] = {
+            id: libraryIdCounter++,
+            pairs: pairs.map(function(p) { return { word: p.word, meaning: p.meaning }; }),
+            wordCount: pairs.length
+        };
+        currentLibraryName = name;
+        saveLibraries();
+        updateLibrarySelector();
+        return name;
+    }
+
+    function deleteLibrary(name) {
+        if (name === '新人教八年级下册') {
+            updateFeedback('⚠️ 默认词库不能删除', '#e74c3c');
+            return false;
+        }
+        if (!libraries[name]) {
+            updateFeedback('⚠️ 词库不存在', '#e74c3c');
+            return false;
+        }
+        window._deletedLibraryData = { pairs: libraries[name].pairs, name: name };
+        delete libraries[name];
+        var keys = Object.keys(libraries);
+        if (keys.length > 0) { currentLibraryName = keys[0]; } else { initDefaultLibrary(); }
+        saveLibraries();
+        updateLibrarySelector();
+        loadLibrary(currentLibraryName);
+        var restoreBtn = document.getElementById('restoreLibBtn');
+        restoreBtn.style.display = 'block';
+        restoreBtn.textContent = '↩️ 恢复 "' + name + '"';
+        updateFeedback('✅ 已删除词库 "' + name + '"', '#0e7b4c');
+        playDone();
+        return true;
+    }
+
+    function loadLibrary(name) {
+        if (!libraries[name]) {
+            updateFeedback('⚠️ 词库 "' + name + '" 不存在', '#e74c3c');
+            return;
+        }
+        currentLibraryName = name;
+        var lib = libraries[name];
+        var pairs = lib.pairs.map(function(p) { return { word: p.word, meaning: p.meaning }; });
+        loadPairs(pairs, 'library', name);
+        saveLibraries();
+        updateLibrarySelector();
+        document.getElementById('libBadge').textContent = '📚 ' + name;
+        var select = document.getElementById('librarySelect');
+        if (select) { select.value = name; }
+        // 关闭纠错模式
+        if (editMode) { toggleEditMode(); }
+    }
+
+    function updateLibrarySelector() {
+        var select = document.getElementById('librarySelect');
+        var currentValue = select.value;
+        select.innerHTML = '';
+        var keys = Object.keys(libraries);
+        keys.sort();
+        keys.forEach(function(key) {
+            var option = document.createElement('option');
+            option.value = key;
+            option.textContent = key + ' (' + libraries[key].wordCount + '词)';
+            select.appendChild(option);
+        });
+        if (currentValue && libraries[currentValue]) { select.value = currentValue; }
+        else if (libraries[currentLibraryName]) { select.value = currentLibraryName; }
+        else if (keys.length > 0) { select.value = keys[0]; currentLibraryName = keys[0]; }
+        document.getElementById('libBadge').textContent = '📚 ' + currentLibraryName;
+        var delBtn = document.getElementById('delLibBtn');
+        delBtn.disabled = (currentLibraryName === '新人教八年级下册');
+    }
+
+    // ============================================================
+    // 8. 核心函数
+    // ============================================================
+    function shuffleArray(arr) {
+        for (var i = arr.length - 1; i > 0; i--) {
+            var j = Math.floor(Math.random() * (i + 1));
+            var temp = arr[i];
+            arr[i] = arr[j];
+            arr[j] = temp;
+        }
+        return arr;
+    }
+
+    function pickRandomPairs(n) {
+        var shuffled = shuffleArray(allPairs.slice());
+        return shuffled.slice(0, Math.min(n, shuffled.length));
+    }
+
+    function initWordStates(pairs) {
+        wordStates = {};
+        pairs.forEach(function(p) {
+            wordStates[p.word] = { attempts: 0, mastered: false };
+        });
+        totalPairsAvailable = pairs.length * MAX_ATTEMPTS;
+        totalPairsCompleted = 0;
+        roundNumber = 1;
+        correctCount = 0;
+        totalAttempts = 0;
+    }
+
+    function getAvailablePairs() {
+        var available = [];
+        allPairs.forEach(function(p) {
+            var state = wordStates[p.word];
+            if (state && state.attempts < MAX_ATTEMPTS && !state.mastered) {
+                available.push(p);
+            }
+        });
+        return available;
+    }
+
+    function fetchOnePair() {
+        var available = getAvailablePairs();
+        if (available.length === 0) return null;
+        var idx = Math.floor(Math.random() * available.length);
+        return available[idx];
+    }
+
+    function isAllMastered() {
+        for (var word in wordStates) {
+            var state = wordStates[word];
+            if (state.attempts < MAX_ATTEMPTS) return false;
+        }
+        return true;
+    }
+
+    function calculateScore() {
+        if (totalAttempts === 0) return { score: 0, correct: 0, total: 0 };
+        var score = Math.round((correctCount / totalAttempts) * 100);
+        return { score: score, correct: correctCount, total: totalAttempts };
+    }
+
+    function updateRound() {
+        var completed = totalPairsCompleted;
+        var perRound = allPairs.length;
+        roundNumber = Math.floor(completed / perRound) + 1;
+    }
+
+    // ============================================================
+    // 9. 构建左右列表
+    // ============================================================
+    function buildPageItems() {
+        var left = [];
+        var right = [];
+        activePairs.forEach(function(p) {
+            if (!matchedPairIds.has(p.id)) {
+                var pos = guessPos(p.word, p.meaning);
+                left.push({ id: 'l-' + p.id, pairId: p.id, text: p.word, type: 'word', pos: pos });
+                right.push({ id: 'r-' + p.id, pairId: p.id, text: p.meaning, type: 'meaning' });
+            }
+        });
+        left = shuffleArray(left);
+        right = shuffleArray(right);
+        return { left: left, right: right };
+    }
+
+    function refillOne() {
+        var newPair = fetchOnePair();
+        if (!newPair) return false;
+        var exists = activePairs.some(function(p) { return p.id === newPair.id; });
+        if (exists) return false;
+        activePairs.push(newPair);
+        return true;
+    }
+
+    function ensurePageFull() {
+        activePairs = activePairs.filter(function(p) {
+            return !matchedPairIds.has(p.id);
+        });
+        while (activePairs.length < PAGE_SIZE) {
+            var added = refillOne();
+            if (!added) break;
+        }
+        if (activePairs.length > PAGE_SIZE) {
+            activePairs = activePairs.slice(0, PAGE_SIZE);
+        }
+        document.getElementById('randomCount').textContent = PAGE_SIZE;
+    }
+
+    function checkAndRefill() {
+        var allMatched = true;
+        for (var i = 0; i < activePairs.length; i++) {
+            if (!matchedPairIds.has(activePairs[i].id)) {
+                allMatched = false;
+                break;
+            }
+        }
+        if (allMatched && activePairs.length > 0) {
+            activePairs.forEach(function(p) {
+                var state = wordStates[p.word];
+                if (state) {
+                    state.attempts++;
+                    totalPairsCompleted++;
+                    if (state.attempts >= MAX_ATTEMPTS) {
+                        state.mastered = true;
+                    }
+                }
+            });
+            activePairs = [];
+            matchedPairIds = new Set();
+            selectedId = null;
+            selectedType = null;
+            updateRound();
+            if (isAllMastered()) {
+                render();
+                updateFeedback('🎉 所有单词已练完 ' + MAX_ATTEMPTS + ' 次！', '#0e7b4c');
+                playDone();
+                var info = calculateScore();
+                showResult(info.score, info.correct, info.total);
+                return true;
+            }
+            ensurePageFull();
+            render();
+            var remaining = getAvailablePairs().length;
+            updateFeedback('📖 已自动补充新页！剩余 ' + remaining + ' 个单词', '#1a4b7a');
+            playDone();
+            return true;
+        }
+        if (activePairs.length < PAGE_SIZE) {
+            var before = activePairs.length;
+            ensurePageFull();
+            if (activePairs.length > before) {
+                render();
+                updateFeedback('➕ 已补充 1 组，当前共 ' + activePairs.length + ' 组', '#1a4b7a');
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // ============================================================
+    // 10. 显示成绩
+    // ============================================================
+    function showResult(score, correct, total) {
+        var emoji = '';
+        if (score >= 90) emoji = '🏆';
+        else if (score >= 70) emoji = '🎉';
+        else if (score >= 50) emoji = '😊';
+        else emoji = '💪';
+        document.getElementById('resultEmoji').textContent = emoji;
+        document.getElementById('resultScore').textContent = score;
+        document.getElementById('resultCorrect').textContent = correct;
+        document.getElementById('resultTotal').textContent = total;
+        document.getElementById('resultOverlay').classList.add('show');
+    }
+
+    // ============================================================
+    // 11. 渲染
+    // ============================================================
+    function render() {
+        ensurePageFull();
+        var _a = buildPageItems(), left = _a.left, right = _a.right;
+        var available = getAvailablePairs();
+        var total = allPairs.length;
+        var matched = matchedPairIds.size;
+        var info = calculateScore();
+
+        document.getElementById('leftCount').textContent = '(' + left.length + ')';
+        document.getElementById('rightCount').textContent = '(' + right.length + ')';
+        document.getElementById('totalCount').textContent = total;
+        document.getElementById('pairInfo').textContent = matched + '/' + PAGE_SIZE;
+        document.getElementById('progressText').textContent = '✅ 已配对 ' + matched + ' 对';
+        document.getElementById('scoreDisplay').textContent = info.score + '分';
+        document.getElementById('feedbackScore').textContent = info.score + '分';
+        document.getElementById('remainDisplay').textContent = '剩余 ' + available.length;
+        document.getElementById('statsDisplay').textContent = info.correct + '/' + info.total;
+
+        var speakAllBtn = document.getElementById('speakAllBtn');
+        if (isSpeakingAll) {
+            speakAllBtn.textContent = '⏹ 停止朗读';
+            speakAllBtn.classList.add('is-speaking');
+        } else {
+            speakAllBtn.textContent = '🔊 朗读全部';
+            speakAllBtn.classList.remove('is-speaking');
+        }
+
+        var editBtn = document.getElementById('editModeBtn');
+        if (editMode) {
+            editBtn.textContent = '✏️ 退出纠错';
+            editBtn.style.background = '#dc2626';
+            editBtn.style.borderColor = '#dc2626';
+        } else {
+            editBtn.textContent = '✏️ 纠错';
+            editBtn.style.background = '#8b5cf6';
+            editBtn.style.borderColor = '#8b5cf6';
+        }
+
+        var leftList = document.getElementById('leftList');
+        var rightList = document.getElementById('rightList');
+
+        if (left.length === 0 && activePairs.length === 0) {
+            leftList.innerHTML = '<div class="empty-hint">🎉 全部完成！</div>';
+            rightList.innerHTML = '<div class="empty-hint">🎉 全部完成！</div>';
+        } else if (left.length === 0) {
+            leftList.innerHTML = '<div class="empty-hint">⏳ 正在加载...</div>';
+            rightList.innerHTML = '<div class="empty-hint">⏳ 正在加载...</div>';
+        } else {
+            leftList.innerHTML = left.map(function(item) {
+                var isSelected = (selectedId === item.id && selectedType === 'left');
+                var isSpeaking = isSpeakingAll && currentSpeakingIndex >= 0 &&
+                    activePairs.length > currentSpeakingIndex &&
+                    activePairs[currentSpeakingIndex] &&
+                    activePairs[currentSpeakingIndex].id === item.pairId;
+                var textLen = item.text.length;
+                var sizeClass = '';
+                if (textLen > 12) sizeClass = 'very-long-word';
+                else if (textLen > 8) sizeClass = 'long-word';
+                var posDisplay = item.pos ? ' ' + item.pos : '';
+                var editIcon = editMode ? ' ✏️' : '';
+                return '<div class="word-item' + (isSelected ? ' selected' : '') +
+                    (isSpeaking ? ' speaking' : '') + '" data-id="' + item.id +
+                    '" data-type="left" data-pairid="' + item.pairId + '">' +
+                    '<button class="play-btn" data-word="' + item.text.replace(/"/g, '&quot;') +
+                    '">🔊</button>' +
+                    '<span class="text-content ' + sizeClass + '" title="' + item.text + posDisplay + '">' + 
+                    item.text + '<span class="pos-tag">' + posDisplay + '</span></span>' +
+                    (editMode ? '<span style="font-size:11px; color:#8b5cf6; font-weight:400;">✏️</span>' : '') +
+                    '</div>';
+            }).join('');
+
+            rightList.innerHTML = right.map(function(item) {
+                var isSelected = (selectedId === item.id && selectedType === 'right');
+                var textLen = item.text.length;
+                var sizeClass = '';
+                if (textLen > 12) sizeClass = 'very-long-word';
+                else if (textLen > 8) sizeClass = 'long-word';
+                return '<div class="word-item' + (isSelected ? ' selected' : '') +
+                    '" data-id="' + item.id + '" data-type="right" data-pairid="' +
+                    item.pairId + '">' +
+                    '<span class="text-content ' + sizeClass + '" title="' + item.text + '">' + item.text + '</span>' +
+                    '</div>';
+            }).join('');
+        }
+
+        document.querySelectorAll('.play-btn').forEach(function(btn) {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                if (isSpeakingAll) {
+                    updateFeedback('⏳ 朗读中，请稍后再点', '#f59e0b');
+                    return;
+                }
+                var word = this.getAttribute('data-word');
+                if (word) {
+                    if (!speechActivated) {
+                        activateSpeech();
+                        setTimeout(function() { speakSingleWord(word); }, 500);
+                    } else {
+                        speakSingleWord(word);
+                    }
+                }
+            });
+        });
+
+        var allItems = document.querySelectorAll('.word-item');
+        allItems.forEach(function(item) {
+            if (isSpeakingAll) {
+                item.style.pointerEvents = 'none';
+                item.style.opacity = '0.6';
+            } else {
+                item.style.pointerEvents = '';
+                item.style.opacity = '';
+            }
+            // 纠错模式点击事件
+            if (editMode) {
+                item.style.cursor = 'pointer';
+                item.addEventListener('click', function(e) {
+                    if (e.target.closest('.play-btn')) return;
+                    if (isSpeakingAll) return;
+                    var pairId = parseInt(this.getAttribute('data-pairid'));
+                    if (!isNaN(pairId)) {
+                        openEditDialog(pairId);
+                    }
+                });
+            } else {
+                item.style.cursor = '';
+            }
+        });
+    }
+
+    function updateFeedback(msg, color) {
+        if (color === undefined) color = '#3b82f6';
+        document.getElementById('feedbackMsg').textContent = msg;
+        document.getElementById('feedbackMsg').style.color = color;
+    }
+
+    // ============================================================
+    // 12. 纠错功能
+    // ============================================================
+    function toggleEditMode() {
+        editMode = !editMode;
+        if (editMode) {
+            updateFeedback('✏️ 纠错模式已开启，点击任意单词进行修改', '#8b5cf6');
+        } else {
+            updateFeedback('💡 已退出纠错模式', '#3b82f6');
+            document.getElementById('editOverlay').classList.remove('show');
+        }
+        render();
+    }
+
+    function openEditDialog(pairId) {
+        // 查找单词
+        var pair = null;
+        for (var i = 0; i < allPairs.length; i++) {
+            if (allPairs[i].id === pairId) {
+                pair = allPairs[i];
+                break;
+            }
+        }
+        if (!pair) {
+            updateFeedback('⚠️ 未找到该单词', '#e74c3c');
+            return;
+        }
+        
+        editingPairId = pairId;
+        document.getElementById('editWord').value = pair.word;
+        document.getElementById('editMeaning').value = pair.meaning;
+        // 获取当前词性
+        var currentPos = guessPos(pair.word, pair.meaning);
+        document.getElementById('editPos').value = currentPos;
+        document.getElementById('editOverlay').classList.add('show');
+    }
+
+    function saveEdit() {
+        var newWord = document.getElementById('editWord').value.trim();
+        var newMeaning = document.getElementById('editMeaning').value.trim();
+        var newPos = document.getElementById('editPos').value.trim();
+        
+        if (!newWord || !newMeaning) {
+            updateFeedback('⚠️ 单词和释义不能为空', '#e74c3c');
+            return;
+        }
+        
+        // 查找并更新
+        for (var i = 0; i < allPairs.length; i++) {
+            if (allPairs[i].id === editingPairId) {
+                // 保存旧词用于更新wordStates
+                var oldWord = allPairs[i].word;
+                allPairs[i].word = newWord;
+                allPairs[i].meaning = newMeaning;
+                
+                // 更新词库中的pairs
+                var lib = libraries[currentLibraryName];
+                if (lib) {
+                    for (var j = 0; j < lib.pairs.length; j++) {
+                        if (lib.pairs[j].word === oldWord && lib.pairs[j].meaning === allPairs[i].meaning) {
+                            // 用旧词匹配，但可能有多个相同词，用id匹配更准确
+                            break;
+                        }
+                    }
+                    // 直接更新库中的pairs
+                    for (var j = 0; j < lib.pairs.length; j++) {
+                        if (j < lib.pairs.length && lib.pairs[j].word === oldWord) {
+                            // 更新对应的pair
+                            var found = false;
+                            for (var k = 0; k < allPairs.length; k++) {
+                                if (allPairs[k].id === editingPairId) {
+                                    lib.pairs[j] = { word: newWord, meaning: newMeaning };
+                                    found = true;
+                                    break;
+                                }
+                            }
+                            if (found) break;
+                        }
+                    }
+                }
+                
+                // 更新originalAllPairs
+                for (var k = 0; k < originalAllPairs.length; k++) {
+                    if (originalAllPairs[k].id === editingPairId) {
+                        originalAllPairs[k].word = newWord;
+                        originalAllPairs[k].meaning = newMeaning;
+                        break;
+                    }
+                }
+                
+                // 更新wordStates
+                if (oldWord !== newWord) {
+                    if (wordStates[oldWord] !== undefined) {
+                        wordStates[newWord] = wordStates[oldWord];
+                        delete wordStates[oldWord];
+                    }
+                }
+                
+                // 更新activePairs中的显示
+                for (var m = 0; m < activePairs.length; m++) {
+                    if (activePairs[m].id === editingPairId) {
+                        activePairs[m].word = newWord;
+                        activePairs[m].meaning = newMeaning;
+                        break;
+                    }
+                }
+                
+                saveLibraries();
+                document.getElementById('editOverlay').classList.remove('show');
+                editingPairId = null;
+                render();
+                updateFeedback('✅ 单词已更新: "' + newWord + '"', '#0e7b4c');
+                playDone();
+                return;
+            }
+        }
+        updateFeedback('⚠️ 保存失败，请重试', '#e74c3c');
+    }
+
+    function deleteWord() {
+        if (!confirm('确定要删除这个单词吗？')) return;
+        
+        for (var i = 0; i < allPairs.length; i++) {
+            if (allPairs[i].id === editingPairId) {
+                var wordToDelete = allPairs[i].word;
+                
+                // 从allPairs中删除
+                allPairs.splice(i, 1);
+                
+                // 从originalAllPairs中删除
+                for (var j = 0; j < originalAllPairs.length; j++) {
+                    if (originalAllPairs[j].id === editingPairId) {
+                        originalAllPairs.splice(j, 1);
+                        break;
+                    }
+                }
+                
+                // 从词库中删除
+                var lib = libraries[currentLibraryName];
+                if (lib) {
+                    for (var k = 0; k < lib.pairs.length; k++) {
+                        if (lib.pairs[k].word === wordToDelete) {
+                            lib.pairs.splice(k, 1);
+                            lib.wordCount = lib.pairs.length;
+                            break;
+                        }
+                    }
+                }
+                
+                // 从wordStates中删除
+                delete wordStates[wordToDelete];
+                
+                // 从activePairs中删除
+                for (var m = 0; m < activePairs.length; m++) {
+                    if (activePairs[m].id === editingPairId) {
+                        activePairs.splice(m, 1);
+                        break;
+                    }
+                }
+                
+                // 从matchedPairIds中删除
+                matchedPairIds.delete(editingPairId);
+                
+                saveLibraries();
+                document.getElementById('editOverlay').classList.remove('show');
+                editingPairId = null;
+                render();
+                updateFeedback('🗑️ 已删除单词: "' + wordToDelete + '"', '#dc2626');
+                playDone();
+                return;
+            }
+        }
+        updateFeedback('⚠️ 删除失败，请重试', '#e74c3c');
+    }
+
+    // ============================================================
+    // 13. 朗读全部功能
+    // ============================================================
+    function startSpeakAll() {
+        if (isSpeakingAll) { stopSpeakAll(); return; }
+        if (!speechActivated) {
+            activateSpeech();
+            setTimeout(function() { startSpeakAll(); }, 500);
+            return;
+        }
+        var available = getAvailablePairs();
+        if (available.length === 0) {
+            updateFeedback('🎉 所有单词已练完！', '#0e7b4c');
+            return;
+        }
+        var pagePairs = getPagePairs();
+        var words = [];
+        for (var i = 0; i < pagePairs.length; i++) {
+            if (!matchedPairIds.has(pagePairs[i].id)) {
+                words.push({ word: pagePairs[i].word, pairId: pagePairs[i].id });
+            }
+        }
+        if (words.length === 0) {
+            var avail = getAvailablePairs();
+            if (avail.length === 0) {
+                updateFeedback('🎉 所有单词已练完！', '#0e7b4c');
+                return;
+            }
+            var temp = avail.slice(0, Math.min(PAGE_SIZE, avail.length));
+            words = temp.map(function(p) { return { word: p.word, pairId: p.id }; });
+        }
+        isSpeakingAll = true;
+        isSpeaking = true;
+        currentSpeakingIndex = -1;
+        speakQueue = words;
+        render();
+        updateFeedback('🔊 正在朗读... (' + 0 + '/' + words.length + ')', '#7c5cbf');
+        speakNextInQueue();
+    }
+
+    function speakNextInQueue() {
+        if (!isSpeakingAll || speakQueue.length === 0) {
+            stopSpeakAll();
+            return;
+        }
+        currentSpeakingIndex++;
+        if (currentSpeakingIndex >= speakQueue.length) {
+            stopSpeakAll();
+            updateFeedback('✅ 朗读完成！', '#0e7b4c');
+            playDone();
+            return;
+        }
+        var item = speakQueue[currentSpeakingIndex];
+        render();
+        speakWordOnly(item.word, function() {
+            setTimeout(function() { speakNextInQueue(); }, 300);
+        });
+    }
+
+    function stopSpeakAll() {
+        isSpeakingAll = false;
+        isSpeaking = false;
+        currentSpeakingIndex = -1;
+        speakQueue = [];
+        var synth = window.speechSynthesis;
+        if (synth) { try { synth.cancel(); } catch (e) {} }
+        render();
+        if (document.getElementById('feedbackMsg').textContent.indexOf('朗读完成') === -1 &&
+            document.getElementById('feedbackMsg').textContent.indexOf('所有单词已练完') === -1) {
+            updateFeedback('⏹ 已停止朗读', '#f59e0b');
+        }
+    }
+
+    function getPagePairs() { return activePairs.slice(); }
+
+    // ============================================================
+    // 14. 配对逻辑
+    // ============================================================
+    function handleItemClick(id, type) {
+        if (editMode) {
+            updateFeedback('✏️ 请点击✏️退出纠错模式后再配对', '#8b5cf6');
+            return;
+        }
+        if (isSpeakingAll) {
+            updateFeedback('⏳ 朗读中，请稍后再操作', '#f59e0b');
+            return;
+        }
+        var _a = buildPageItems(), left = _a.left, right = _a.right;
+        var allItems = left.concat(right);
+        var item = null;
+        for (var i = 0; i < allItems.length; i++) {
+            if (allItems[i].id === id) { item = allItems[i]; break; }
+        }
+        if (!item) return;
+        if (matchedPairIds.has(item.pairId)) {
+            updateFeedback('⏳ 已配对', '#f59e0b');
+            return;
+        }
+        if (type === 'left') {
+            if (!speechActivated) {
+                activateSpeech();
+                setTimeout(function() { speakSingleWord(item.text); }, 500);
+            } else {
+                speakSingleWord(item.text);
+            }
+        }
+        if (selectedId === null) {
+            selectedId = id;
+            selectedType = type;
+            render();
+            if (type === 'left') {
+                updateFeedback('👉 已选: "' + item.text + '"，请点击右侧释义', '#1a4b7a');
+            } else {
+                updateFeedback('👉 已选释义，请点击左侧单词', '#1a4b7a');
+            }
+            return;
+        }
+        if (selectedId === id && selectedType === type) {
+            selectedId = null;
+            selectedType = null;
+            render();
+            updateFeedback('💡 已取消', '#889bb0');
+            return;
+        }
+        var firstItem = null;
+        for (var j = 0; j < allItems.length; j++) {
+            if (allItems[j].id === selectedId) { firstItem = allItems[j]; break; }
+        }
+        if (!firstItem || matchedPairIds.has(firstItem.pairId)) {
+            selectedId = null;
+            selectedType = null;
+            render();
+            updateFeedback('⚠️ 请重新选择', '#e74c3c');
+            return;
+        }
+        if (selectedType === type) {
+            selectedId = id;
+            selectedType = type;
+            render();
+            if (type === 'left') {
+                updateFeedback('👉 已选: "' + item.text + '"，请点击右侧释义', '#1a4b7a');
+            } else {
+                updateFeedback('👉 已选释义，请点击左侧单词', '#1a4b7a');
+            }
+            return;
+        }
+        totalAttempts++;
+        if (firstItem.pairId === item.pairId) {
+            correctCount++;
+            matchedPairIds.add(firstItem.pairId);
+            selectedId = null;
+            selectedType = null;
+            ensurePageFull();
+            render();
+            playRingtone();
+            if (isAllMastered()) {
+                var allMatched = true;
+                for (var k = 0; k < activePairs.length; k++) {
+                    if (!matchedPairIds.has(activePairs[k].id)) { allMatched = false; break; }
+                }
+                if (allMatched && activePairs.length > 0) {
+                    activePairs.forEach(function(p) {
+                        var state = wordStates[p.word];
+                        if (state) { state.attempts++; totalPairsCompleted++; }
+                    });
+                    activePairs = [];
+                    matchedPairIds = new Set();
+                    render();
+                    updateFeedback('🎉 全部完成！', '#0e7b4c');
+                    playDone();
+                    var info = calculateScore();
+                    showResult(info.score, info.correct, info.total);
+                    return;
+                }
+                render();
+                updateFeedback('🎉 所有单词已练完！', '#0e7b4c');
+                playDone();
+                var info2 = calculateScore();
+                showResult(info2.score, info2.correct, info2.total);
+                return;
+            }
+            var remaining = getAvailablePairs().length;
+            var info3 = calculateScore();
+            updateFeedback('✅ 正确！' + info3.score + '分 （' + info3.correct + '/' + info3.total + '）', '#0e7b4c');
+        } else {
+            selectedId = null;
+            selectedType = null;
+            render();
+            playChordError();
+            var info4 = calculateScore();
+            updateFeedback('❌ 错误！' + info4.score + '分 （' + info4.correct + '/' + info4.total + '）', '#e74c3c');
+        }
+    }
+
+    // ============================================================
+    // 15. 词库加载
+    // ============================================================
+    function loadPairs(pairs, source, libName) {
+        allPairs = pairs.map(function(p, idx) {
+            return { word: p.word.trim(), meaning: p.meaning.trim(), id: idx };
+        });
+        allPairs = allPairs.filter(function(p) { return p.word && p.meaning; });
+        if (allPairs.length === 0) {
+            updateFeedback('⚠️ 词库为空，使用默认词库', '#e74c3c');
+            allPairs = DEFAULT_PAIRS.map(function(p, idx) {
+                return { word: p.word, meaning: p.meaning, id: idx };
+            });
+        }
+        originalAllPairs = allPairs.map(function(p) { return { word: p.word, meaning: p.meaning, id: p.id }; });
+        initWordStates(allPairs);
+        activePairs = [];
+        matchedPairIds = new Set();
+        selectedId = null;
+        selectedType = null;
+        correctCount = 0;
+        totalAttempts = 0;
+        totalPairsCompleted = 0;
+        document.getElementById('resultOverlay').classList.remove('show');
+        if (isSpeakingAll) stopSpeakAll();
+        ensurePageFull();
+        render();
+        var sourceLabel = source === 'library' ? ('词库 "' + libName + '"') : (source === 'custom' ? '自定义' : '默认');
+        updateFeedback('📚 已加载 ' + allPairs.length + ' 个单词 (' + sourceLabel + ')', '#1a4b7a');
+    }
+
+    // ============================================================
+    // 16. 重置 & 打乱
+    // ============================================================
+    function resetGame() {
+        if (isSpeakingAll) stopSpeakAll();
+        allPairs = originalAllPairs.map(function(p) { return { word: p.word, meaning: p.meaning, id: p.id }; });
+        initWordStates(allPairs);
+        activePairs = [];
+        matchedPairIds = new Set();
+        selectedId = null;
+        selectedType = null;
+        correctCount = 0;
+        totalAttempts = 0;
+        totalPairsCompleted = 0;
+        document.getElementById('resultOverlay').classList.remove('show');
+        ensurePageFull();
+        render();
+        updateFeedback('🔄 已重置，重新开始', '#3b82f6');
+        playDone();
+    }
+
+    function shuffleCurrentPage() {
+        if (isSpeakingAll) {
+            updateFeedback('⏳ 朗读中，请稍后再操作', '#f59e0b');
+            return;
+        }
+        selectedId = null;
+        selectedType = null;
+        render();
+        updateFeedback('🔄 已打乱', '#3b82f6');
+    }
+
+    // ============================================================
+    // 17. 智能解析器
+    // ============================================================
+    function isEnglishWord(text) {
+        return /^[a-zA-Z][a-zA-Z\-\'\s\.]*[a-zA-Z]$/.test(text) && text.length > 0;
+    }
+    function hasChinese(text) { return /[\u4e00-\u9fa5]/.test(text); }
+    function isNumber(text) { return /^[\d\.]+$/.test(text); }
+
+    function extractWordMeaning(parts) {
+        var englishIndex = -1, chineseIndex = -1;
+        for (var i = 0; i < parts.length; i++) {
+            var text = parts[i].trim();
+            if (!text || isNumber(text)) continue;
+            if (isEnglishWord(text)) {
+                if (englishIndex === -1) englishIndex = i;
+            } else if (hasChinese(text)) {
+                if (chineseIndex === -1) chineseIndex = i;
+            }
+        }
+        if (englishIndex !== -1 && chineseIndex !== -1) {
+            if (englishIndex < chineseIndex) {
+                return { word: parts[englishIndex].trim(), meaning: parts[chineseIndex].trim() };
+            } else {
+                return { word: parts[chineseIndex].trim(), meaning: parts[englishIndex].trim() };
+            }
+        }
+        if (englishIndex !== -1) {
+            var meaning = parts.filter(function(_, idx) { return idx !== englishIndex && parts[idx].trim(); }).join(' ').trim();
+            if (meaning) {
+                return { word: parts[englishIndex].trim(), meaning: meaning };
+            }
+        }
+        return null;
+    }
+
+    function parseSingleLine(line) {
+        var trimmed = line.trim();
+        if (!trimmed) return null;
+        if (trimmed.startsWith('//') || trimmed.startsWith('#')) return null;
+        var separators = [',', '\t', '|', '；', '，', ':', '：', '=', '、', '·', '•', '。'];
+        for (var i = 0; i < separators.length; i++) {
+            if (trimmed.indexOf(separators[i]) !== -1) {
+                var parts = trimmed.split(separators[i]).map(function(s) { return s.trim(); }).filter(function(s) { return s; });
+                if (parts.length >= 2) {
+                    var result = extractWordMeaning(parts);
+                    if (result) return result;
+                }
+            }
+        }
+        var match = trimmed.match(/^(.+?)\s*[\(（]\s*(.+?)\s*[\)）]\s*$/);
+        if (match) {
+            var word = match[1].trim(), meaning = match[2].trim();
+            if (isEnglishWord(word) && hasChinese(meaning)) return { word: word, meaning: meaning };
+            if (isEnglishWord(meaning) && hasChinese(word)) return { word: meaning, meaning: word };
+        }
+        match = trimmed.match(/^(.+?)\s*[-—–]\s*(.+)$/);
+        if (match) {
+            var result = extractWordMeaning([match[1].trim(), match[2].trim()]);
+            if (result) return result;
+        }
+        var words = trimmed.split(/\s+/).filter(function(s) { return s.trim(); });
+        if (words.length >= 2) {
+            var result = extractWordMeaning(words);
+            if (result) return result;
+            if (isEnglishWord(words[0])) {
+                var meaning = words.slice(1).join(' ');
+                if (meaning) return { word: words[0], meaning: meaning };
+            }
+            if (isEnglishWord(words[words.length - 1])) {
+                var meaning = words.slice(0, words.length - 1).join(' ');
+                if (meaning) return { word: words[words.length - 1], meaning: meaning };
+            }
+        }
+        var engMatch = trimmed.match(/[a-zA-Z][a-zA-Z\-\'\s\.]*[a-zA-Z]/);
+        var chnMatch = trimmed.match(/[\u4e00-\u9fa5][\u4e00-\u9fa5\s\，\。\、\；]*/);
+        if (engMatch && chnMatch) {
+            var eng = engMatch[0].trim(), chn = chnMatch[0].trim();
+            if (trimmed.indexOf(eng) < trimmed.indexOf(chn)) {
+                return { word: eng, meaning: chn };
+            } else {
+                return { word: eng, meaning: chn };
+            }
+        }
+        return null;
+    }
+
+    function smartParseText(text) {
+        var lines = text.split(/\r?\n/);
+        var pairs = [], errors = [];
+        for (var i = 0; i < lines.length; i++) {
+            var line = lines[i];
+            if (!line || !line.trim()) continue;
+            var result = parseSingleLine(line);
+            if (result && result.word && result.meaning) {
+                pairs.push(result);
+            } else if (line.trim()) {
+                errors.push('第' + (i+1) + '行: "' + line.trim() + '"');
+            }
+        }
+        return { pairs: pairs, errors: errors };
+    }
+
+    function deduplicatePairs(pairs) {
+        var seen = {}, unique = [];
+        for (var i = 0; i < pairs.length; i++) {
+            var key = pairs[i].word.toLowerCase().trim();
+            if (!seen[key]) {
+                seen[key] = true;
+                unique.push({ word: pairs[i].word.trim(), meaning: pairs[i].meaning.trim() });
+            }
+        }
+        return unique;
+    }
+
+    function processTextFileSmart(file, callback, fileName) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                var result = { pairs: [], errors: [] };
+                var text = '';
+                try { text = e.target.result; result = smartParseText(text); } catch (e1) {}
+                if (result.pairs.length === 0) {
+                    try { var decoder = new TextDecoder('utf-8');
+                        var uint8Array = new Uint8Array(e.target.result);
+                        text = decoder.decode(uint8Array);
+                        result = smartParseText(text);
+                    } catch (e2) {}
+                }
+                if (result.pairs.length === 0) {
+                    try { var decoder2 = new TextDecoder('gbk');
+                        var uint8Array2 = new Uint8Array(e.target.result);
+                        text = decoder2.decode(uint8Array2);
+                        result = smartParseText(text);
+                    } catch (e3) {}
+                }
+                if (result.pairs.length === 0) {
+                    try { var decoder3 = new TextDecoder('gb2312');
+                        var uint8Array3 = new Uint8Array(e.target.result);
+                        text = decoder3.decode(uint8Array3);
+                        result = smartParseText(text);
+                    } catch (e4) {}
+                }
+                callback(result, fileName);
+            } catch (err) {
+                callback({ pairs: [], errors: ['解析失败: ' + err.message] }, fileName);
+            }
+        };
+        reader.onerror = function() {
+            callback({ pairs: [], errors: ['文件读取失败'] }, fileName);
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    function processFilesWithSmartParse(files, libName, callback) {
+        var totalFiles = files.length;
+        var processed = 0;
+        var allPairs = [], allErrors = [], fileReports = [];
+        for (var i = 0; i < files.length; i++) {
+            var file = files[i];
+            var ext = file.name.split('.').pop().toLowerCase();
+            if (ext !== 'txt') {
+                fileReports.push('📄 ' + file.name + ' ❌ 不支持的文件格式');
+                processed++;
+                continue;
+            }
+            (function(file) {
+                processTextFileSmart(file, function(result, fileName) {
+                    processed++;
+                    allPairs = allPairs.concat(result.pairs);
+                    if (result.errors.length > 0) {
+                        allErrors.push('📄 ' + fileName + ': ' + result.errors.length + ' 行未识别');
+                        fileReports.push('📄 ' + fileName + ' ⚠️ ' + result.pairs.length + ' 个单词, ' + result.errors.length + ' 行未识别');
+                    } else {
+                        fileReports.push('📄 ' + fileName + ' ✅ ' + result.pairs.length + ' 个单词');
+                    }
+                    if (processed === totalFiles) {
+                        var uniquePairs = deduplicatePairs(allPairs);
+                        callback({ pairs: uniquePairs, total: allPairs.length, unique: uniquePairs.length, errors: allErrors, reports: fileReports });
+                    }
+                }, file.name);
+            })(file);
+        }
+    }
+
+    // ============================================================
+    // 18. 上传功能
+    // ============================================================
+    var uploadToggleBtn = document.getElementById('uploadToggleBtn');
+    var uploadConfirmBtn = document.getElementById('uploadConfirmBtn');
+    var uploadCancelBtn = document.getElementById('uploadCancelBtn');
+    var libraryNameInput = document.getElementById('libraryNameInput');
+    var fileInput = document.getElementById('fileInput');
+    var fileStatus = document.getElementById('fileStatus');
+    var fileCountEl = document.getElementById('fileCount');
+    var progressBar = document.getElementById('progressBar');
+    var progressFill = document.getElementById('progressFill');
+
+    uploadToggleBtn.addEventListener('click', function() {
+        if (isSpeakingAll) {
+            updateFeedback('⏳ 朗读中，请稍后再操作', '#f59e0b');
+            return;
+        }
+        var area = document.getElementById('uploadArea');
+        area.classList.toggle('show');
+        if (area.classList.contains('show')) {
+            fileInput.value = '';
+            fileStatus.textContent = '📁 未选择文件';
+            fileCountEl.textContent = '';
+            libraryNameInput.value = '我的词库';
+            progressBar.classList.remove('show');
+            progressFill.style.width = '0%';
+        }
+    });
+
+    uploadCancelBtn.addEventListener('click', function() {
+        document.getElementById('uploadArea').classList.remove('show');
+        fileInput.value = '';
+        fileStatus.textContent = '📁 未选择文件';
+        fileCountEl.textContent = '';
+        progressBar.classList.remove('show');
+        progressFill.style.width = '0%';
+    });
+
+    fileInput.addEventListener('change', function(e) {
+        if (e.target.files && e.target.files.length > 0) {
+            var files = e.target.files;
+            var names = [];
+            for (var i = 0; i < Math.min(files.length, 5); i++) { names.push(files[i].name); }
+            var displayNames = names.join('、');
+            if (files.length > 5) { displayNames += ' ...等' + files.length + '个文件'; }
+            fileStatus.textContent = '📁 已选择: ' + displayNames;
+            fileCountEl.textContent = '📊 共 ' + files.length + ' 个文件';
+        } else {
+            fileStatus.textContent = '📁 未选择文件';
+            fileCountEl.textContent = '';
+        }
+    });
+
+    uploadConfirmBtn.addEventListener('click', function() {
+        var files = fileInput.files;
+        if (!files || files.length === 0) {
+            updateFeedback('⚠️ 请先选择文件', '#e74c3c');
+            return;
+        }
+        var libName = libraryNameInput.value.trim() || '未命名词库';
+        progressBar.classList.add('show');
+        progressFill.style.width = '5%';
+        fileStatus.textContent = '⏳ 正在智能识别 ' + files.length + ' 个文件...';
+        processFilesWithSmartParse(files, libName, function(result) {
+            progressFill.style.width = '100%';
+            var reportHtml = result.reports.join('<br>');
+            fileStatus.innerHTML = reportHtml;
+            if (result.errors.length > 0) {
+                fileCountEl.textContent = '⚠️ ' + result.errors.length + ' 个警告，点击"取消"关闭';
+                fileCountEl.style.color = '#dc2626';
+            } else {
+                fileCountEl.textContent = '✅ 共识别 ' + result.total + ' 个词条，去重后 ' + result.unique + ' 个';
+                fileCountEl.style.color = '#0e7b4c';
+            }
+            if (result.unique > 0) {
+                var addedName = addLibrary(libName, result.pairs);
+                loadLibrary(addedName);
+                setTimeout(function() {
+                    progressBar.classList.remove('show');
+                    progressFill.style.width = '0%';
+                    updateFeedback('✅ 成功导入 ' + result.unique + ' 个单词' + 
+                        (result.total > result.unique ? '（去重 ' + (result.total - result.unique) + ' 个）' : ''), '#0e7b4c');
+                    document.getElementById('uploadArea').classList.remove('show');
+                    playDone();
+                }, 500);
+            } else {
+                setTimeout(function() {
+                    progressBar.classList.remove('show');
+                    progressFill.style.width = '0%';
+                    updateFeedback('⚠️ 未能识别出任何有效单词，请检查格式', '#e74c3c');
+                    fileStatus.textContent = '❌ 未识别到任何单词配对，请确保每行格式为: 单词,释义';
+                }, 500);
+            }
+        });
+    });
+
+    // ============================================================
+    // 19. 删除词库功能
+    // ============================================================
+    document.getElementById('delLibBtn').addEventListener('click', function() {
+        var name = currentLibraryName;
+        if (name === '新人教八年级下册') {
+            updateFeedback('⚠️ 默认词库不能删除', '#e74c3c');
+            return;
+        }
+        if (!libraries[name]) {
+            updateFeedback('⚠️ 词库不存在', '#e74c3c');
+            return;
+        }
+        if (confirm('⚠️ 确定要删除词库 "' + name + '" 吗？\n删除后可以使用"恢复词库"功能找回。')) {
+            deleteLibrary(name);
+        }
+    });
+
+    // ============================================================
+    // 20. 恢复词库功能
+    // ============================================================
+    var restoreBtn = document.getElementById('restoreLibBtn');
+    restoreBtn.style.display = 'none';
+
+    restoreBtn.addEventListener('click', function() {
+        if (!window._deletedLibraryData) {
+            updateFeedback('⚠️ 没有可恢复的词库', '#e74c3c');
+            return;
+        }
+        var data = window._deletedLibraryData;
+        if (confirm('确定要恢复词库 "' + data.name + '" 吗？')) {
+            var pairs = data.pairs;
+            var name = data.name;
+            if (libraries[name]) {
+                var suffix = 1;
+                while (libraries[name + ' (恢复' + suffix + ')']) { suffix++; }
+                name = name + ' (恢复' + suffix + ')';
+            }
+            libraries[name] = {
+                id: libraryIdCounter++,
+                pairs: pairs.map(function(p) { return { word: p.word, meaning: p.meaning }; }),
+                wordCount: pairs.length
+            };
+            currentLibraryName = name;
+            saveLibraries();
+            updateLibrarySelector();
+            loadLibrary(name);
+            window._deletedLibraryData = null;
+            restoreBtn.style.display = 'none';
+            updateFeedback('✅ 已恢复词库 "' + name + '"', '#0e7b4c');
+            playDone();
+        }
+    });
+
+    // ============================================================
+    // 21. 事件绑定
+    // ============================================================
+    // 纠错模式按钮
+    document.getElementById('editModeBtn').addEventListener('click', function() {
+        toggleEditMode();
+    });
+
+    // 纠错弹窗按钮
+    document.getElementById('closeEditBtn').addEventListener('click', function() {
+        document.getElementById('editOverlay').classList.remove('show');
+        editingPairId = null;
+    });
+    document.getElementById('editCancelBtn').addEventListener('click', function() {
+        document.getElementById('editOverlay').classList.remove('show');
+        editingPairId = null;
+    });
+    document.getElementById('editSaveBtn').addEventListener('click', saveEdit);
+    document.getElementById('editDeleteBtn').addEventListener('click', deleteWord);
+
+    // 点击弹窗外部关闭
+    document.getElementById('editOverlay').addEventListener('click', function(e) {
+        if (e.target === this) {
+            this.classList.remove('show');
+            editingPairId = null;
+        }
+    });
+
+    // 左列点击
+    document.getElementById('leftList').addEventListener('click', function(e) {
+        var el = e.target.closest('.word-item');
+        if (!el) return;
+        if (e.target.closest('.play-btn')) return;
+        var id = el.getAttribute('data-id');
+        var type = el.getAttribute('data-type');
+        if (id && type && !editMode) {
+            handleItemClick(id, type);
+        }
+    });
+
+    // 右列点击
+    document.getElementById('rightList').addEventListener('click', function(e) {
+        var el = e.target.closest('.word-item');
+        if (!el) return;
+        if (e.target.closest('.play-btn')) return;
+        var id = el.getAttribute('data-id');
+        var type = el.getAttribute('data-type');
+        if (id && type && !editMode) {
+            handleItemClick(id, type);
+        }
+    });
+
+    document.getElementById('speakAllBtn').addEventListener('click', function() {
+        startSpeakAll();
+    });
+
+    document.getElementById('shuffleBtn').addEventListener('click', shuffleCurrentPage);
+    document.getElementById('resetBtn').addEventListener('click', resetGame);
+
+    document.getElementById('randomBtn').addEventListener('click', function() {
+        if (isSpeakingAll) {
+            updateFeedback('⏳ 朗读中，请稍后再操作', '#f59e0b');
+            return;
+        }
+        var count = PAGE_SIZE;
+        var pairs = pickRandomPairs(count);
+        if (pairs.length === 0) {
+            updateFeedback('⚠️ 词库中没有足够的单词', '#e74c3c');
+            return;
+        }
+        activePairs = [];
+        matchedPairIds = new Set();
+        selectedId = null;
+        selectedType = null;
+        pairs.forEach(function(p) {
+            if (wordStates[p.word]) {
+                wordStates[p.word].attempts = 0;
+                wordStates[p.word].mastered = false;
+            }
+        });
+        pairs.forEach(function(p) { activePairs.push(p); });
+        ensurePageFull();
+        render();
+        updateFeedback('🎲 已随机加载 ' + pairs.length + ' 个单词', '#0e7b4c');
+        playDone();
+    });
+
+    document.getElementById('librarySelect').addEventListener('change', function() {
+        var name = this.value;
+        if (name && libraries[name]) {
+            if (totalAttempts > 0) {
+                if (!confirm('切换词库将重置当前进度，确定吗？')) {
+                    this.value = currentLibraryName;
+                    return;
+                }
+            }
+            loadLibrary(name);
+        }
+    });
+
+    document.getElementById('resultCloseBtn').addEventListener('click', function() {
+        document.getElementById('resultOverlay').classList.remove('show');
+    });
+    document.getElementById('resultOverlay').addEventListener('click', function(e) {
+        if (e.target === this) {
+            this.classList.remove('show');
+        }
+    });
+
+    document.getElementById('activateSpeechBtn').addEventListener('click', function() {
+        activateSpeech();
+    });
+
+    // ============================================================
+    // 22. 窗口大小变化时重新计算分页
+    // ============================================================
+    var resizeTimer = null;
+    window.addEventListener('resize', function() {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function() {
+            var newSize = calculatePageSize();
+            if (newSize !== PAGE_SIZE) {
+                PAGE_SIZE = newSize;
+                document.getElementById('randomCount').textContent = PAGE_SIZE;
+                var oldActive = activePairs.slice();
+                activePairs = [];
+                matchedPairIds = new Set();
+                selectedId = null;
+                selectedType = null;
+                ensurePageFull();
+                render();
+                updateFeedback('📱 已根据屏幕调整，每页 ' + PAGE_SIZE + ' 组', '#1a4b7a');
+            }
+        }, 500);
+    });
+
+    // ============================================================
+    // 23. 启动
+    // ============================================================
+    console.log('✅ 程序开始启动...');
+    
+    setTimeout(checkSpeechSupport, 500);
+    
+    loadLibrariesFromStorage();
+    if (Object.keys(libraries).length === 0) {
+        initDefaultLibrary();
+    }
+    updateLibrarySelector();
+    if (libraries[currentLibraryName]) {
+        loadLibrary(currentLibraryName);
+    } else {
+        var keys = Object.keys(libraries);
+        if (keys.length > 0) {
+            loadLibrary(keys[0]);
+        } else {
+            initDefaultLibrary();
+            loadLibrary('新人教八年级下册');
+        }
+    }
+    
+    console.log('✅ 程序启动完成！');
+
+})();
+</script>
+</body>
+</html>
